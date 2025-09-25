@@ -27,14 +27,38 @@ const pool = new Pool({
   query_timeout: 10000
 });
 
-// Email transporter
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: 'turkawki15@gmail.com',
-    pass: 'degy htxh eygy eard'
+// Email transporter (using Ethereal for testing)
+let transporter;
+
+// Create test account for Ethereal
+async function createTestAccount() {
+  try {
+    const testAccount = await nodemailer.createTestAccount();
+    transporter = nodemailer.createTransport({
+      host: 'smtp.ethereal.email',
+      port: 587,
+      secure: false,
+      auth: {
+        user: testAccount.user,
+        pass: testAccount.pass
+      }
+    });
+    console.log('✅ Ethereal test account created:', testAccount.user);
+  } catch (error) {
+    console.error('❌ Error creating Ethereal test account:', error);
+    // Fallback to Gmail
+    transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: 'turkawki15@gmail.com',
+        pass: 'degy htxh eygy eard'
+      }
+    });
   }
-});
+}
+
+// Initialize email transporter
+createTestAccount();
 
 // Test database connection
 pool.connect((err, client, release) => {
