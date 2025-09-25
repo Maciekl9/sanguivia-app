@@ -29,16 +29,14 @@ const pool = new Pool({
 
 // Email transporter
 const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-  port: process.env.EMAIL_PORT || 587,
+  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 587,
   secure: false,
   auth: {
-    user: process.env.EMAIL_USER || 'turkawki15@gmail.com',
-    pass: process.env.EMAIL_PASS || 'degy htxh eygy eard',
+    user: 'turkawki15@gmail.com',
+    pass: 'degy htxh eygy eard'
   },
-  connectionTimeout: 10000,
-  greetingTimeout: 10000,
-  socketTimeout: 10000,
   tls: {
     rejectUnauthorized: false
   }
@@ -57,9 +55,9 @@ pool.connect((err, client, release) => {
 // Test email connection
 transporter.verify((error, success) => {
   if (error) {
-    console.error('Email connection error:', error);
+    console.error('❌ Email connection error:', error);
   } else {
-    console.log('Email server is ready to send messages');
+    console.log('✅ Email server is ready to send messages');
   }
 });
 
@@ -128,29 +126,27 @@ app.post('/api/register', async (req, res) => {
 
     const userId = result.rows[0].id;
 
-    // Send verification email (temporarily disabled)
-    const verificationUrl = `${process.env.FRONTEND_URL}/verify/${verificationToken}`;
+    // Send verification email
+    const verificationUrl = `${process.env.FRONTEND_URL || 'https://sanguivia-app.vercel.app'}/verify/${verificationToken}`;
     
-    // try {
-    //   await transporter.sendMail({
-    //     from: process.env.EMAIL_USER || 'turkawki15@gmail.com',
-    //     to: email,
-    //     subject: 'Aktywacja konta Sanguivia',
-    //     html: `
-    //       <h2>Witaj w Sanguivia!</h2>
-    //       <p>Dziękujemy za rejestrację. Aby aktywować swoje konto, kliknij poniższy link:</p>
-    //       <a href="${verificationUrl}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Aktywuj konto</a>
-    //       <p>Link jest ważny przez 24 godziny.</p>
-    //       <p>Jeśli nie rejestrowałeś się w Sanguivia, zignoruj ten email.</p>
-    //     `
-    //   });
-    //   console.log('Activation email sent successfully to:', email);
-    // } catch (emailError) {
-    //   console.error('Email sending error:', emailError);
-    //   // Continue without failing the registration
-    // }
-    
-    console.log('Registration successful, email sending disabled for testing');
+    try {
+      await transporter.sendMail({
+        from: 'turkawki15@gmail.com',
+        to: email,
+        subject: 'Aktywacja konta Sanguivia',
+        html: `
+          <h2>Witaj w Sanguivia!</h2>
+          <p>Dziękujemy za rejestrację. Aby aktywować swoje konto, kliknij poniższy link:</p>
+          <a href="${verificationUrl}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Aktywuj konto</a>
+          <p>Link jest ważny przez 24 godziny.</p>
+          <p>Jeśli nie rejestrowałeś się w Sanguivia, zignoruj ten email.</p>
+        `
+      });
+      console.log('✅ Activation email sent successfully to:', email);
+    } catch (emailError) {
+      console.error('❌ Email sending error:', emailError);
+      // Continue without failing the registration
+    }
 
     clearTimeout(timeout);
     if (!responseSent) {
@@ -439,7 +435,7 @@ app.post('/api/resend-activation', async (req, res) => {
     
     try {
       await transporter.sendMail({
-        from: process.env.EMAIL_USER || 'turkawki15@gmail.com',
+        from: 'turkawki15@gmail.com',
         to: email,
         subject: 'Aktywacja konta Sanguivia - Ponownie',
         html: `
@@ -451,10 +447,10 @@ app.post('/api/resend-activation', async (req, res) => {
         `
       });
       
-      console.log('Resend activation email sent successfully to:', email);
+      console.log('✅ Resend activation email sent successfully to:', email);
       res.json({ message: 'Email aktywacyjny został wysłany ponownie' });
     } catch (emailError) {
-      console.error('Email sending error:', emailError);
+      console.error('❌ Email sending error:', emailError);
       res.status(500).json({ error: 'Błąd wysyłania emaila: ' + emailError.message });
     }
   } catch (error) {
