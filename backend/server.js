@@ -463,6 +463,38 @@ app.post('/api/resend-activation', async (req, res) => {
   }
 });
 
+// Activate user endpoint (for testing)
+app.post('/api/activate-user', async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ error: 'Email jest wymagany' });
+    }
+    
+    // Find user by email
+    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Użytkownik nie znaleziony' });
+    }
+    
+    const user = result.rows[0];
+    
+    if (user.is_verified) {
+      return res.status(400).json({ error: 'Konto już jest aktywowane' });
+    }
+    
+    // Activate user
+    await pool.query('UPDATE users SET is_verified = true WHERE email = $1', [email]);
+    
+    res.json({ message: 'Konto zostało aktywowane pomyślnie' });
+  } catch (error) {
+    console.error('Activate user error:', error);
+    res.status(500).json({ error: 'Błąd serwera' });
+  }
+});
+
 // Delete user endpoint
 app.delete('/api/delete-user', async (req, res) => {
   try {
