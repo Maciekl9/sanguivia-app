@@ -392,7 +392,7 @@ class NeumorphismLoginForm {
                     cursor: pointer;
                     font-weight: 500;
                 ">📧 Wyślij mail ponownie</button>
-                <button onclick="window.location.reload()" style="
+                <button onclick="location.reload()" style="
                     background: #f0f0f0;
                     color: #333;
                     border: none;
@@ -589,7 +589,12 @@ async function resendActivationEmailFromLogin() {
         const data = await response.json();
         
         if (response.ok) {
-            alert('✅ Email aktywacyjny został wysłany ponownie!');
+            // Show activation link in a modal or alert
+            if (data.activationLink) {
+                alert('✅ Link aktywacyjny został wygenerowany ponownie!\n\nLink: ' + data.activationLink);
+            } else {
+                alert('✅ Email aktywacyjny został wysłany ponownie!');
+            }
         } else {
             alert('❌ Błąd: ' + data.error);
         }
@@ -629,7 +634,12 @@ async function resendActivationEmail() {
         const data = await response.json();
         
         if (response.ok) {
-            alert('✅ Email aktywacyjny został wysłany ponownie!');
+            // Show activation link in a modal or alert
+            if (data.activationLink) {
+                alert('✅ Link aktywacyjny został wygenerowany ponownie!\n\nLink: ' + data.activationLink);
+            } else {
+                alert('✅ Email aktywacyjny został wysłany ponownie!');
+            }
         } else {
             alert('❌ Błąd: ' + data.error);
         }
