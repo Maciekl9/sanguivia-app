@@ -128,27 +128,29 @@ app.post('/api/register', async (req, res) => {
 
     const userId = result.rows[0].id;
 
-    // Send verification email
+    // Send verification email (temporarily disabled)
     const verificationUrl = `${process.env.FRONTEND_URL}/verify/${verificationToken}`;
     
-    try {
-      await transporter.sendMail({
-        from: process.env.EMAIL_USER || 'turkawki15@gmail.com',
-        to: email,
-        subject: 'Aktywacja konta Sanguivia',
-        html: `
-          <h2>Witaj w Sanguivia!</h2>
-          <p>Dziękujemy za rejestrację. Aby aktywować swoje konto, kliknij poniższy link:</p>
-          <a href="${verificationUrl}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Aktywuj konto</a>
-          <p>Link jest ważny przez 24 godziny.</p>
-          <p>Jeśli nie rejestrowałeś się w Sanguivia, zignoruj ten email.</p>
-        `
-      });
-      console.log('Activation email sent successfully to:', email);
-    } catch (emailError) {
-      console.error('Email sending error:', emailError);
-      // Continue without failing the registration
-    }
+    // try {
+    //   await transporter.sendMail({
+    //     from: process.env.EMAIL_USER || 'turkawki15@gmail.com',
+    //     to: email,
+    //     subject: 'Aktywacja konta Sanguivia',
+    //     html: `
+    //       <h2>Witaj w Sanguivia!</h2>
+    //       <p>Dziękujemy za rejestrację. Aby aktywować swoje konto, kliknij poniższy link:</p>
+    //       <a href="${verificationUrl}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Aktywuj konto</a>
+    //       <p>Link jest ważny przez 24 godziny.</p>
+    //       <p>Jeśli nie rejestrowałeś się w Sanguivia, zignoruj ten email.</p>
+    //     `
+    //   });
+    //   console.log('Activation email sent successfully to:', email);
+    // } catch (emailError) {
+    //   console.error('Email sending error:', emailError);
+    //   // Continue without failing the registration
+    // }
+    
+    console.log('Registration successful, email sending disabled for testing');
 
     clearTimeout(timeout);
     if (!responseSent) {
