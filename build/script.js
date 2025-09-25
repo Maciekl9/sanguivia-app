@@ -329,7 +329,7 @@ class NeumorphismLoginForm {
         
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 30000);
+            const timeoutId = setTimeout(() => controller.abort(), 60000);
             
             const response = await fetch(`${this.API_BASE_URL}/register`, {
                 method: 'POST',
@@ -578,13 +578,19 @@ async function resendActivationEmailFromLogin() {
     button.disabled = true;
     
     try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000);
+        
         const response = await fetch('https://sanguivia-ap.onrender.com/api/resend-activation', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ email })
+            body: JSON.stringify({ email }),
+            signal: controller.signal
         });
+        
+        clearTimeout(timeoutId);
         
         const data = await response.json();
         
@@ -618,13 +624,19 @@ async function resendActivationEmail() {
     button.disabled = true;
     
     try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000);
+        
         const response = await fetch('https://sanguivia-ap.onrender.com/api/resend-activation', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ email })
+            body: JSON.stringify({ email }),
+            signal: controller.signal
         });
+        
+        clearTimeout(timeoutId);
         
         const data = await response.json();
         
