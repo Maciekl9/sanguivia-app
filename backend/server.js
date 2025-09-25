@@ -15,11 +15,10 @@ app.use(express.json());
 
 // Database connection
 const pool = new Pool({
-  host: process.env.DB_HOST || 'dpg-d3akjop5pdvs73cvbftg-a.oregon-postgres.render.com',
-  port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || 'sanguivia_db',
-  user: process.env.DB_USER || 'sanguivia_db_user',
-  password: process.env.DB_PASSWORD || 'hV5Jo573qoyIWfstQnv76QBZ31HmWE05',
+  connectionString: process.env.DATABASE_URL || 'postgresql://sanguivia_db_user:hV5Jo573qoyIWfstQnv76QBZ31HmWE05@dpg-d3akjop5pdvs73cvbftg-a.oregon-postgres.render.com/sanguivia_db',
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
 
 // Email transporter
@@ -74,7 +73,7 @@ app.post('/api/register', async (req, res) => {
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
     // Create verification token
-    const verificationToken = jwt.sign({ email }, process.env.JWT_SECRET, { expiresIn: '24h' });
+    const verificationToken = jwt.sign({ email }, process.env.JWT_SECRET || 'h7s8df9g8sd76f6s7g9sd87g6f7sd98f7s9', { expiresIn: '24h' });
 
     // Insert user into database
     const result = await pool.query(
@@ -117,7 +116,7 @@ app.get('/api/verify/:token', async (req, res) => {
     const { token } = req.params;
 
     // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'h7s8df9g8sd76f6s7g9sd87g6f7sd98f7s9');
     
     // Update user verification status
     const result = await pool.query(
@@ -168,7 +167,7 @@ app.post('/api/login', async (req, res) => {
     // Generate JWT token
     const token = jwt.sign(
       { userId: user.id, email: user.email },
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET || 'h7s8df9g8sd76f6s7g9sd87g6f7sd98f7s9',
       { expiresIn: process.env.JWT_EXPIRES_IN }
     );
 
@@ -208,7 +207,7 @@ app.post('/api/forgot-password', async (req, res) => {
     const user = result.rows[0];
 
     // Generate reset token
-    const resetToken = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const resetToken = jwt.sign({ userId: user.id }, process.env.JWT_SECRET || 'h7s8df9g8sd76f6s7g9sd87g6f7sd98f7s9', { expiresIn: '1h' });
 
     // Update user with reset token
     await pool.query(
@@ -252,7 +251,7 @@ app.post('/api/reset-password/:token', async (req, res) => {
     }
 
     // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'h7s8df9g8sd76f6s7g9sd87g6f7sd98f7s9');
     
     // Find user with this reset token
     const result = await pool.query(
@@ -286,7 +285,7 @@ app.post('/api/reset-password/:token', async (req, res) => {
 app.get('/api/verify-token/:token', async (req, res) => {
   try {
     const { token } = req.params;
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'h7s8df9g8sd76f6s7g9sd87g6f7sd98f7s9');
     res.json({ valid: true, decoded });
   } catch (error) {
     res.json({ valid: false });
