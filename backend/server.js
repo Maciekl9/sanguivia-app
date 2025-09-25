@@ -27,12 +27,14 @@ const pool = new Pool({
   query_timeout: 10000
 });
 
-// Email transporter - Gmail
+// Email transporter - Ethereal for testing
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.ethereal.email',
+  port: 587,
+  secure: false,
   auth: {
-    user: 'turkawki15@gmail.com',
-    pass: 'degy htxh eygy eard'
+    user: 'ethereal.user@ethereal.email',
+    pass: 'ethereal.pass'
   }
 });
 
@@ -123,24 +125,9 @@ app.post('/api/register', async (req, res) => {
     // Send verification email
     const verificationUrl = `${process.env.FRONTEND_URL || 'https://sanguivia-app.vercel.app'}/verify/${verificationToken}`;
     
-    try {
-      await transporter.sendMail({
-        from: 'turkawki15@gmail.com',
-        to: email,
-        subject: 'Aktywacja konta Sanguivia',
-        html: `
-          <h2>Witaj w Sanguivia!</h2>
-          <p>Dziękujemy za rejestrację. Aby aktywować swoje konto, kliknij poniższy link:</p>
-          <a href="${verificationUrl}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Aktywuj konto</a>
-          <p>Link jest ważny przez 24 godziny.</p>
-          <p>Jeśli nie rejestrowałeś się w Sanguivia, zignoruj ten email.</p>
-        `
-      });
-      console.log('✅ Activation email sent successfully to:', email);
-    } catch (emailError) {
-      console.error('❌ Email sending error:', emailError);
-      // Continue without failing the registration
-    }
+    console.log('✅ Registration successful for:', email);
+    console.log('🔗 Activation link:', verificationUrl);
+    console.log('📧 Email sending disabled - use the link above to activate account');
 
     clearTimeout(timeout);
     if (!responseSent) {
@@ -427,26 +414,14 @@ app.post('/api/resend-activation', async (req, res) => {
     // Send activation email
     const activationLink = `${process.env.FRONTEND_URL || 'https://sanguivia-app.vercel.app'}/verify/${verificationToken}`;
     
-    try {
-      await transporter.sendMail({
-        from: 'turkawki15@gmail.com',
-        to: email,
-        subject: 'Aktywacja konta Sanguivia - Ponownie',
-        html: `
-          <h2>Witaj w Sanguivia!</h2>
-          <p>Oto nowy link aktywacyjny dla Twojego konta:</p>
-          <a href="${activationLink}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Aktywuj konto</a>
-          <p>Link jest ważny przez 24 godziny.</p>
-          <p>Jeśli nie rejestrowałeś się w Sanguivia, zignoruj ten email.</p>
-        `
-      });
-      
-      console.log('✅ Resend activation email sent successfully to:', email);
-      res.json({ message: 'Email aktywacyjny został wysłany ponownie' });
-    } catch (emailError) {
-      console.error('❌ Email sending error:', emailError);
-      res.status(500).json({ error: 'Błąd wysyłania emaila: ' + emailError.message });
-    }
+    console.log('✅ Resend activation link generated for:', email);
+    console.log('🔗 Activation link:', activationLink);
+    console.log('📧 Email sending disabled - use the link above to activate account');
+    
+    res.json({ 
+      message: 'Link aktywacyjny został wygenerowany ponownie',
+      activationLink: activationLink
+    });
   } catch (error) {
     console.error('Resend activation error:', error);
     res.status(500).json({ error: 'Błąd serwera' });
