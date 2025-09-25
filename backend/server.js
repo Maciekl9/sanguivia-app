@@ -27,14 +27,12 @@ const pool = new Pool({
   query_timeout: 10000
 });
 
-// Email transporter - Mailgun
+// Email transporter - Gmail
 const transporter = nodemailer.createTransport({
-  host: 'smtp.mailgun.org',
-  port: 587,
-  secure: false,
+  service: 'gmail',
   auth: {
-    user: 'postmaster@sandbox1234567890abcdefghijklmnopqrstuvwxyz.mailgun.org',
-    pass: '1234567890abcdefghijklmnopqrstuvwxyz'
+    user: 'turkawki15@gmail.com',
+    pass: 'degy htxh eygy eard'
   }
 });
 
@@ -122,19 +120,34 @@ app.post('/api/register', async (req, res) => {
 
     const userId = result.rows[0].id;
 
-    // Generate verification URL
+    // Send verification email
     const verificationUrl = `${process.env.FRONTEND_URL || 'https://sanguivia-app.vercel.app'}/verify/${verificationToken}`;
     
-    console.log('✅ Registration successful for:', email);
-    console.log('🔗 Activation link:', verificationUrl);
+    try {
+      await transporter.sendMail({
+        from: 'turkawki15@gmail.com',
+        to: email,
+        subject: 'Aktywacja konta Sanguivia',
+        html: `
+          <h2>Witaj w Sanguivia!</h2>
+          <p>Dziękujemy za rejestrację. Aby aktywować swoje konto, kliknij poniższy link:</p>
+          <a href="${verificationUrl}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Aktywuj konto</a>
+          <p>Link jest ważny przez 24 godziny.</p>
+          <p>Jeśli nie rejestrowałeś się w Sanguivia, zignoruj ten email.</p>
+        `
+      });
+      console.log('✅ Activation email sent successfully to:', email);
+    } catch (emailError) {
+      console.error('❌ Email sending error:', emailError);
+      // Continue without failing the registration
+    }
 
     clearTimeout(timeout);
     if (!responseSent) {
       responseSent = true;
       res.status(201).json({ 
         message: 'Konto utworzone pomyślnie. Sprawdź email, aby je aktywować.',
-        userId: userId,
-        activationLink: verificationUrl
+        userId: userId
       });
     }
 
@@ -414,13 +427,26 @@ app.post('/api/resend-activation', async (req, res) => {
     // Send activation email
     const activationLink = `${process.env.FRONTEND_URL || 'https://sanguivia-app.vercel.app'}/verify/${verificationToken}`;
     
-    console.log('✅ Resend activation link generated for:', email);
-    console.log('🔗 Activation link:', activationLink);
-    
-    res.json({ 
-      message: 'Link aktywacyjny został wygenerowany ponownie',
-      activationLink: activationLink
-    });
+    try {
+      await transporter.sendMail({
+        from: 'turkawki15@gmail.com',
+        to: email,
+        subject: 'Aktywacja konta Sanguivia - Ponownie',
+        html: `
+          <h2>Witaj w Sanguivia!</h2>
+          <p>Oto nowy link aktywacyjny dla Twojego konta:</p>
+          <a href="${activationLink}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Aktywuj konto</a>
+          <p>Link jest ważny przez 24 godziny.</p>
+          <p>Jeśli nie rejestrowałeś się w Sanguivia, zignoruj ten email.</p>
+        `
+      });
+      
+      console.log('✅ Resend activation email sent successfully to:', email);
+      res.json({ message: 'Email aktywacyjny został wysłany ponownie' });
+    } catch (emailError) {
+      console.error('❌ Email sending error:', emailError);
+      res.status(500).json({ error: 'Błąd wysyłania emaila: ' + emailError.message });
+    }
   } catch (error) {
     console.error('Resend activation error:', error);
     res.status(500).json({ error: 'Błąd serwera' });
