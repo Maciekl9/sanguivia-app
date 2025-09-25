@@ -391,6 +391,62 @@ app.post('/api/send-activation', async (req, res) => {
   }
 });
 
+// Resend activation email endpoint
+app.post('/api/resend-activation', async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ error: 'Email jest wymagany' });
+    }
+    
+    // Find user by email
+    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Użytkownik nie znaleziony' });
+    }
+    
+    const user = result.rows[0];
+    
+    if (user.is_verified) {
+      return res.status(400).json({ error: 'Konto już jest aktywowane' });
+    }
+    
+    // Generate new verification token
+    const verificationToken = jwt.sign({ email }, process.env.JWT_SECRET || 'h7s8df9g8sd76f6s7g9sd87g6f7sd98f7s9', { expiresIn: '24h' });
+    
+    // Update user with new token
+    await pool.query('UPDATE users SET verification_token = $1 WHERE email = $2', [verificationToken, email]);
+    
+    // Send activation email
+    const activationLink = `${process.env.FRONTEND_URL || 'https://sanguivia-app.vercel.app'}/verify/${verificationToken}`;
+    
+    try {
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER || 'turkawki15@gmail.com',
+        to: email,
+        subject: 'Aktywacja konta Sanguivia - Ponownie',
+        html: `
+          <h2>Witaj w Sanguivia!</h2>
+          <p>Oto nowy link aktywacyjny dla Twojego konta:</p>
+          <a href="${activationLink}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Aktywuj konto</a>
+          <p>Link jest ważny przez 24 godziny.</p>
+          <p>Jeśli nie rejestrowałeś się w Sanguivia, zignoruj ten email.</p>
+        `
+      });
+      
+      res.json({ message: 'Email aktywacyjny został wysłany ponownie' });
+    } catch (emailError) {
+      console.error('Email sending error:', emailError);
+      res.status(500).json({ error: 'Błąd wysyłania emaila' });
+    }
+  } catch (error) {
+    console.error('Resend activation error:', error);
+    res.status(500).json({ error: 'Błąd serwera' });
+  }
+});
+
 // Delete user endpoint
 app.delete('/api/delete-user', async (req, res) => {
   try {

@@ -177,6 +177,45 @@ class NeumorphismLoginForm {
         }, 500);
     }
     
+    showResendButton() {
+        // Remove existing resend button if any
+        const existingButton = document.getElementById('resendButton');
+        if (existingButton) {
+            existingButton.remove();
+        }
+        
+        // Create resend button
+        const resendButton = document.createElement('div');
+        resendButton.id = 'resendButton';
+        resendButton.style.cssText = `
+            text-align: center;
+            margin-top: 15px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        `;
+        
+        resendButton.innerHTML = `
+            <p style="margin: 0 0 10px 0; color: #666; font-size: 14px;">
+                Nie otrzymałeś maila aktywacyjnego?
+            </p>
+            <button onclick="resendActivationEmailFromLogin()" style="
+                background: #4CAF50;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 6px;
+                cursor: pointer;
+                font-weight: 500;
+            ">📧 Wyślij mail ponownie</button>
+        `;
+        
+        // Insert after login form
+        const loginForm = document.querySelector('.login-form');
+        loginForm.parentNode.insertBefore(resendButton, loginForm.nextSibling);
+    }
+    
     clearError(field) {
         const formGroup = document.getElementById(field).closest('.form-group');
         const errorElement = document.getElementById(`${field}Error`);
@@ -223,7 +262,12 @@ class NeumorphismLoginForm {
                 // Show neumorphic success
                 this.showNeumorphicSuccess();
             } else {
-                this.showError('password', data.error || 'Logowanie nie powiodło się');
+                if (data.error && data.error.includes('nie zostało aktywowane')) {
+                    this.showError('password', data.error);
+                    this.showResendButton();
+                } else {
+                    this.showError('password', data.error || 'Logowanie nie powiodło się');
+                }
             }
         } catch (error) {
             console.error('Login error:', error);
@@ -337,15 +381,26 @@ class NeumorphismLoginForm {
         successMessage.innerHTML = `
             <h3>✅ Rejestracja pomyślna!</h3>
             <p>Sprawdź swoją skrzynkę email i kliknij link aktywacyjny.</p>
-            <button onclick="sendActivationEmail()" style="
-                background: white;
-                color: #4CAF50;
-                border: none;
-                padding: 8px 16px;
-                border-radius: 4px;
-                margin-top: 10px;
-                cursor: pointer;
-            ">Wyślij mail ponownie</button>
+            <div style="margin-top: 15px;">
+                <button onclick="resendActivationEmail()" style="
+                    background: #4CAF50;
+                    color: white;
+                    border: none;
+                    padding: 10px 20px;
+                    border-radius: 6px;
+                    margin-right: 10px;
+                    cursor: pointer;
+                    font-weight: 500;
+                ">📧 Wyślij mail ponownie</button>
+                <button onclick="window.location.reload()" style="
+                    background: #f0f0f0;
+                    color: #333;
+                    border: none;
+                    padding: 10px 20px;
+                    border-radius: 6px;
+                    cursor: pointer;
+                ">🔄 Odśwież stronę</button>
+            </div>
         `;
         
         // Insert after register form
@@ -508,7 +563,87 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Global function to send activation email
+// Global function to resend activation email from login page
+async function resendActivationEmailFromLogin() {
+    const email = document.getElementById('email').value;
+    if (!email) {
+        alert('Proszę wprowadzić email');
+        return;
+    }
+    
+    // Show loading state
+    const button = event.target;
+    const originalText = button.innerHTML;
+    button.innerHTML = '⏳ Wysyłanie...';
+    button.disabled = true;
+    
+    try {
+        const response = await fetch('https://sanguivia-ap.onrender.com/api/resend-activation', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            alert('✅ Email aktywacyjny został wysłany ponownie!');
+        } else {
+            alert('❌ Błąd: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Resend activation error:', error);
+        alert('❌ Błąd wysyłania emaila: ' + error.message);
+    } finally {
+        // Restore button state
+        button.innerHTML = originalText;
+        button.disabled = false;
+    }
+}
+
+// Global function to resend activation email
+async function resendActivationEmail() {
+    const email = document.getElementById('regEmail').value;
+    if (!email) {
+        alert('Proszę wprowadzić email');
+        return;
+    }
+    
+    // Show loading state
+    const button = event.target;
+    const originalText = button.innerHTML;
+    button.innerHTML = '⏳ Wysyłanie...';
+    button.disabled = true;
+    
+    try {
+        const response = await fetch('https://sanguivia-ap.onrender.com/api/resend-activation', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            alert('✅ Email aktywacyjny został wysłany ponownie!');
+        } else {
+            alert('❌ Błąd: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Resend activation error:', error);
+        alert('❌ Błąd wysyłania emaila: ' + error.message);
+    } finally {
+        // Restore button state
+        button.innerHTML = originalText;
+        button.disabled = false;
+    }
+}
+
+// Global function to send activation email (legacy)
 async function sendActivationEmail() {
     const email = document.getElementById('regEmail').value;
     if (!email) {
