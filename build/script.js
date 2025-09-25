@@ -589,12 +589,7 @@ async function resendActivationEmailFromLogin() {
         const data = await response.json();
         
         if (response.ok) {
-            // Show activation link in a modal or alert
-            if (data.activationLink) {
-                alert('✅ Link aktywacyjny został wygenerowany ponownie!\n\nLink: ' + data.activationLink);
-            } else {
-                alert('✅ Email aktywacyjny został wysłany ponownie!');
-            }
+            alert('✅ Email aktywacyjny został wysłany ponownie!');
         } else {
             alert('❌ Błąd: ' + data.error);
         }
@@ -634,12 +629,7 @@ async function resendActivationEmail() {
         const data = await response.json();
         
         if (response.ok) {
-            // Show activation link in a modal or alert
-            if (data.activationLink) {
-                alert('✅ Link aktywacyjny został wygenerowany ponownie!\n\nLink: ' + data.activationLink);
-            } else {
-                alert('✅ Email aktywacyjny został wysłany ponownie!');
-            }
+            alert('✅ Email aktywacyjny został wysłany ponownie!');
         } else {
             alert('❌ Błąd: ' + data.error);
         }
