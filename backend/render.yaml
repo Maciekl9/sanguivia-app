@@ -1,0 +1,52 @@
+services:
+  - type: web
+    name: sanguivia-backend
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DB_HOST
+        fromDatabase:
+          name: sanguivia-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: sanguivia-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: sanguivia-db
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: sanguivia-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: sanguivia-db
+          property: password
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 24h
+      - key: EMAIL_HOST
+        value: smtp.gmail.com
+      - key: EMAIL_PORT
+        value: 587
+      - key: EMAIL_USER
+        value: twoj-email@gmail.com
+      - key: EMAIL_PASS
+        value: twoje-haslo-aplikacji-gmail
+      - key: FRONTEND_URL
+        value: https://sanguivia-app.vercel.app
+
+databases:
+  - name: sanguivia-db
+    plan: free
+    databaseName: sanguivia
+    user: sanguivia_user

@@ -1,0 +1,60 @@
+{
+  "name": "sanguivia-desktop",
+  "version": "1.0.0",
+  "description": "Sanguivia - Desktop ERP/CRM System for Perfumery Business",
+  "author": "Sanguivia Team",
+  "main": "build/electron.js",
+  "homepage": "./",
+  "scripts": {
+    "start": "electron .",
+    "dev": "concurrently \"npm run dev:react\" \"wait-on http://localhost:3000 && electron .\"",
+    "dev:react": "react-scripts start",
+    "build": "react-scripts build",
+    "build:electron": "npm run build && electron-builder",
+    "dist": "npm run build && electron-builder --publish=never",
+    "pack": "electron-builder --dir"
+  },
+  "build": {
+    "appId": "com.sanguivia.desktop",
+    "productName": "Sanguivia",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "build/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "dependencies": {
+    "electron-store": "^10.1.0",
+    "pkg": "^5.8.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-scripts": "5.0.1"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "electron": "^38.1.2",
+    "electron-builder": "^24.6.4",
+    "wait-on": "^7.2.0"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}
