@@ -15,7 +15,7 @@ app.use(express.json());
 
 // Database connection
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://sanguivia_db_user:hV5Jo573qoyIWfstQnv76QBZ31HmWE05@dpg-d3akjop5pdvs73cvbftg-a.oregon-postgres.render.com/sanguivia_db',
+  connectionString: process.env.DATABASE_URL || 'postgresql://sanguivia_db_user:hV5Jo573qoyIWfstQnv76QBZ3lHmWEO5@dpg-d3akjop5pdvs73cvbftg-a.oregon-postgres.render.com/sanguivia_db',
   ssl: {
     rejectUnauthorized: false
   }
