@@ -26,12 +26,12 @@ const pool = new Pool({
 
 // Email transporter
 const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST,
-  port: process.env.EMAIL_PORT,
+  host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+  port: process.env.EMAIL_PORT || 587,
   secure: false,
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    user: process.env.EMAIL_USER || 'turkawki15@gmail.com',
+    pass: process.env.EMAIL_PASS || 'degy htxh eygy eard',
   },
 });
 
@@ -293,6 +293,59 @@ app.get('/api/verify-token/:token', async (req, res) => {
     res.json({ valid: true, decoded });
   } catch (error) {
     res.json({ valid: false });
+  }
+});
+
+// Send activation email manually
+app.post('/api/send-activation', async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ error: 'Email jest wymagany' });
+    }
+    
+    // Find user by email
+    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Użytkownik nie znaleziony' });
+    }
+    
+    const user = result.rows[0];
+    
+    if (user.is_verified) {
+      return res.status(400).json({ error: 'Konto już jest aktywowane' });
+    }
+    
+    // Generate new verification token
+    const verificationToken = jwt.sign({ email }, process.env.JWT_SECRET || 'h7s8df9g8sd76f6s7g9sd87g6f7sd98f7s9', { expiresIn: '24h' });
+    
+    // Update user with new token
+    await pool.query('UPDATE users SET verification_token = $1 WHERE email = $2', [verificationToken, email]);
+    
+    // Send activation email
+    const activationLink = `${process.env.FRONTEND_URL || 'https://sanguivia-app.vercel.app'}/activate?token=${verificationToken}`;
+    
+    const mailOptions = {
+      from: process.env.EMAIL_USER || 'turkawki15@gmail.com',
+      to: email,
+      subject: 'Aktywacja konta Sanguivia',
+      html: `
+        <h2>Witaj w Sanguivia!</h2>
+        <p>Dziękujemy za rejestrację. Aby aktywować swoje konto, kliknij poniższy link:</p>
+        <a href="${activationLink}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Aktywuj konto</a>
+        <p>Link jest ważny przez 24 godziny.</p>
+        <p>Jeśli nie rejestrowałeś się w Sanguivia, zignoruj ten email.</p>
+      `
+    };
+    
+    await transporter.sendMail(mailOptions);
+    
+    res.json({ message: 'Email aktywacyjny został wysłany' });
+  } catch (error) {
+    console.error('Send activation error:', error);
+    res.status(500).json({ error: 'Błąd wysyłania emaila' });
   }
 });
 
