@@ -10,7 +10,10 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: ['https://sanguivia-app.vercel.app', 'http://localhost:3000', 'file://'],
+  credentials: true
+}));
 app.use(express.json());
 
 // Database connection
@@ -46,6 +49,7 @@ pool.connect((err, client, release) => {
 
 // Register
 app.post('/api/register', async (req, res) => {
+  console.log('Register request received:', req.body);
   try {
     const { firstname, lastname, login, email, password } = req.body;
 
