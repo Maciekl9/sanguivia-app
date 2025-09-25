@@ -21,7 +21,10 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgresql://sanguivia_db_user:hV5Jo573qoyIWfstQnv76QBZ3lHmWEO5@dpg-d3akjop5pdvs73cvbftg-a.oregon-postgres.render.com/sanguivia_db',
   ssl: {
     rejectUnauthorized: false
-  }
+  },
+  connectionTimeoutMillis: 10000,
+  idleTimeoutMillis: 30000,
+  query_timeout: 10000
 });
 
 // Email transporter
@@ -33,6 +36,9 @@ const transporter = nodemailer.createTransport({
     user: process.env.EMAIL_USER || 'turkawki15@gmail.com',
     pass: process.env.EMAIL_PASS || 'degy htxh eygy eard',
   },
+  connectionTimeout: 10000,
+  greetingTimeout: 10000,
+  socketTimeout: 10000
 });
 
 // Test database connection
@@ -50,6 +56,12 @@ pool.connect((err, client, release) => {
 // Register
 app.post('/api/register', async (req, res) => {
   console.log('Register request received:', req.body);
+  
+  // Set timeout for the entire operation
+  const timeout = setTimeout(() => {
+    res.status(408).json({ error: 'Request timeout' });
+  }, 25000);
+  
   try {
     const { firstname, lastname, login, email, password } = req.body;
 
@@ -103,12 +115,14 @@ app.post('/api/register', async (req, res) => {
       `
     });
 
+    clearTimeout(timeout);
     res.status(201).json({ 
       message: 'Konto utworzone pomyślnie. Sprawdź email, aby je aktywować.',
       userId: userId
     });
 
   } catch (error) {
+    clearTimeout(timeout);
     console.error('Registration error:', error);
     res.status(500).json({ error: 'Błąd serwera podczas rejestracji' });
   }
@@ -346,6 +360,40 @@ app.post('/api/send-activation', async (req, res) => {
   } catch (error) {
     console.error('Send activation error:', error);
     res.status(500).json({ error: 'Błąd wysyłania emaila' });
+  }
+});
+
+// Delete user endpoint
+app.delete('/api/delete-user', async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ error: 'Email jest wymagany' });
+    }
+    
+    // Delete user from database
+    const result = await pool.query('DELETE FROM users WHERE email = $1', [email]);
+    
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Użytkownik nie znaleziony' });
+    }
+    
+    res.json({ message: 'Użytkownik został usunięty' });
+  } catch (error) {
+    console.error('Delete user error:', error);
+    res.status(500).json({ error: 'Błąd usuwania użytkownika' });
+  }
+});
+
+// List all users endpoint
+app.get('/api/users', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT id, firstname, lastname, login, email, is_verified, created_at FROM users ORDER BY created_at DESC');
+    res.json({ users: result.rows });
+  } catch (error) {
+    console.error('List users error:', error);
+    res.status(500).json({ error: 'Błąd pobierania użytkowników' });
   }
 });
 
