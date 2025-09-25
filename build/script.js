@@ -318,6 +318,44 @@ class NeumorphismLoginForm {
         }
     }
     
+    showRegisterSuccess() {
+        // Hide all error messages
+        document.querySelectorAll('.error-message').forEach(el => el.style.display = 'none');
+        
+        // Show success message
+        const successMessage = document.createElement('div');
+        successMessage.className = 'success-message';
+        successMessage.style.cssText = `
+            background: #4CAF50;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            text-align: center;
+            font-weight: 500;
+        `;
+        successMessage.innerHTML = `
+            <h3>✅ Rejestracja pomyślna!</h3>
+            <p>Sprawdź swoją skrzynkę email i kliknij link aktywacyjny.</p>
+            <button onclick="sendActivationEmail()" style="
+                background: white;
+                color: #4CAF50;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                margin-top: 10px;
+                cursor: pointer;
+            ">Wyślij mail ponownie</button>
+        `;
+        
+        // Insert after register form
+        const registerForm = document.querySelector('.register-form');
+        registerForm.parentNode.insertBefore(successMessage, registerForm.nextSibling);
+        
+        // Hide register form
+        registerForm.style.display = 'none';
+    }
+    
     showRegisterError(field, message) {
         const formGroup = document.getElementById(field).closest('.form-group');
         const errorElement = document.getElementById(`${field}Error`);
@@ -469,3 +507,33 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+// Global function to send activation email
+async function sendActivationEmail() {
+    const email = document.getElementById('regEmail').value;
+    if (!email) {
+        alert('Proszę wprowadzić email');
+        return;
+    }
+    
+    try {
+        const response = await fetch('https://sanguivia-ap.onrender.com/api/send-activation', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            alert('Email aktywacyjny został wysłany!');
+        } else {
+            alert('Błąd: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Send activation error:', error);
+        alert('Błąd wysyłania emaila: ' + error.message);
+    }
+}
