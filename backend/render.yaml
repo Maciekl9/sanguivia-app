@@ -11,25 +11,15 @@ services:
       - key: PORT
         value: 10000
       - key: DB_HOST
-        fromDatabase:
-          name: sanguivia-db
-          property: host
+        value: dpg-d3akjop5pdvs73cvbftg-a.oregon-postgres.render.com
       - key: DB_PORT
-        fromDatabase:
-          name: sanguivia-db
-          property: port
+        value: 5432
       - key: DB_NAME
-        fromDatabase:
-          name: sanguivia-db
-          property: database
+        value: sanguivia_db
       - key: DB_USER
-        fromDatabase:
-          name: sanguivia-db
-          property: user
+        value: sanguivia_db_user
       - key: DB_PASSWORD
-        fromDatabase:
-          name: sanguivia-db
-          property: password
+        value: hV5Jo573qoyIWfstQnv76QBZ31HmWE05
       - key: JWT_SECRET
         generateValue: true
       - key: JWT_EXPIRES_IN
