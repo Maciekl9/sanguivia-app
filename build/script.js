@@ -284,13 +284,19 @@ class NeumorphismLoginForm {
         this.setRegisterLoading(true);
         
         try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000);
+            
             const response = await fetch(`${this.API_BASE_URL}/register`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ firstname, lastname, login, email, password })
+                body: JSON.stringify({ firstname, lastname, login, email, password }),
+                signal: controller.signal
             });
+            
+            clearTimeout(timeoutId);
             
             const data = await response.json();
             
@@ -302,7 +308,11 @@ class NeumorphismLoginForm {
             }
         } catch (error) {
             console.error('Register error:', error);
-            this.showRegisterError('regEmail', 'Błąd połączenia z serwerem');
+            if (error.name === 'AbortError') {
+                this.showRegisterError('regEmail', 'Przekroczono limit czasu połączenia');
+            } else {
+                this.showRegisterError('regEmail', 'Błąd połączenia z serwerem: ' + error.message);
+            }
         } finally {
             this.setRegisterLoading(false);
         }
