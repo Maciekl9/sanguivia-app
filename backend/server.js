@@ -57,9 +57,14 @@ pool.connect((err, client, release) => {
 app.post('/api/register', async (req, res) => {
   console.log('Register request received:', req.body);
   
+  let responseSent = false;
+  
   // Set timeout for the entire operation
   const timeout = setTimeout(() => {
-    res.status(408).json({ error: 'Request timeout' });
+    if (!responseSent) {
+      responseSent = true;
+      res.status(408).json({ error: 'Request timeout' });
+    }
   }, 25000);
   
   try {
@@ -67,11 +72,19 @@ app.post('/api/register', async (req, res) => {
 
     // Validate input
     if (!firstname || !lastname || !login || !email || !password) {
-      return res.status(400).json({ error: 'Wszystkie pola są wymagane' });
+      clearTimeout(timeout);
+      if (!responseSent) {
+        responseSent = true;
+        return res.status(400).json({ error: 'Wszystkie pola są wymagane' });
+      }
     }
 
     if (password.length < 6) {
-      return res.status(400).json({ error: 'Hasło musi mieć co najmniej 6 znaków' });
+      clearTimeout(timeout);
+      if (!responseSent) {
+        responseSent = true;
+        return res.status(400).json({ error: 'Hasło musi mieć co najmniej 6 znaków' });
+      }
     }
 
     // Check if user already exists
@@ -81,7 +94,11 @@ app.post('/api/register', async (req, res) => {
     );
 
     if (existingUser.rows.length > 0) {
-      return res.status(400).json({ error: 'Użytkownik o tym emailu lub loginie już istnieje' });
+      clearTimeout(timeout);
+      if (!responseSent) {
+        responseSent = true;
+        return res.status(400).json({ error: 'Użytkownik o tym emailu lub loginie już istnieje' });
+      }
     }
 
     // Hash password
@@ -99,32 +116,43 @@ app.post('/api/register', async (req, res) => {
 
     const userId = result.rows[0].id;
 
-    // Send verification email (commented out for testing)
+    // Send verification email
     const verificationUrl = `${process.env.FRONTEND_URL}/verify/${verificationToken}`;
     
-    // await transporter.sendMail({
-    //   from: process.env.EMAIL_USER,
-    //   to: email,
-    //   subject: 'Aktywacja konta Sanguivia',
-    //   html: `
-    //     <h2>Witaj w Sanguivia!</h2>
-    //     <p>Dziękujemy za rejestrację. Aby aktywować swoje konto, kliknij poniższy link:</p>
-    //     <a href="${verificationUrl}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Aktywuj konto</a>
-    //     <p>Link jest ważny przez 24 godziny.</p>
-    //     <p>Jeśli nie rejestrowałeś się w Sanguivia, zignoruj ten email.</p>
-    //   `
-    // });
+    try {
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: 'Aktywacja konta Sanguivia',
+        html: `
+          <h2>Witaj w Sanguivia!</h2>
+          <p>Dziękujemy za rejestrację. Aby aktywować swoje konto, kliknij poniższy link:</p>
+          <a href="${verificationUrl}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Aktywuj konto</a>
+          <p>Link jest ważny przez 24 godziny.</p>
+          <p>Jeśli nie rejestrowałeś się w Sanguivia, zignoruj ten email.</p>
+        `
+      });
+    } catch (emailError) {
+      console.error('Email sending error:', emailError);
+      // Continue without failing the registration
+    }
 
     clearTimeout(timeout);
-    res.status(201).json({ 
-      message: 'Konto utworzone pomyślnie. Sprawdź email, aby je aktywować.',
-      userId: userId
-    });
+    if (!responseSent) {
+      responseSent = true;
+      res.status(201).json({ 
+        message: 'Konto utworzone pomyślnie. Sprawdź email, aby je aktywować.',
+        userId: userId
+      });
+    }
 
   } catch (error) {
     clearTimeout(timeout);
-    console.error('Registration error:', error);
-    res.status(500).json({ error: 'Błąd serwera podczas rejestracji' });
+    if (!responseSent) {
+      responseSent = true;
+      console.error('Registration error:', error);
+      res.status(500).json({ error: 'Błąd serwera podczas rejestracji' });
+    }
   }
 });
 
