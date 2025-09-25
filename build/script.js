@@ -12,7 +12,7 @@ class NeumorphismLoginForm {
         this.socialButtons = [];
         
         // API Configuration
-        this.API_BASE_URL = 'https://sanguivia-backend.onrender.com/api';
+        this.API_BASE_URL = 'https://sanguivia-ap.onrender.com/api';
         
         this.init();
     }
@@ -425,7 +425,7 @@ async function showForgotPassword() {
     }
     
     try {
-        const response = await fetch('https://sanguivia-backend.onrender.com/api/forgot-password', {
+        const response = await fetch('https://sanguivia-ap.onrender.com/api/forgot-password', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
