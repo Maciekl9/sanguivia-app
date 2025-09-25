@@ -99,21 +99,21 @@ app.post('/api/register', async (req, res) => {
 
     const userId = result.rows[0].id;
 
-    // Send verification email
+    // Send verification email (commented out for testing)
     const verificationUrl = `${process.env.FRONTEND_URL}/verify/${verificationToken}`;
     
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: 'Aktywacja konta Sanguivia',
-      html: `
-        <h2>Witaj w Sanguivia!</h2>
-        <p>Dziękujemy za rejestrację. Aby aktywować swoje konto, kliknij poniższy link:</p>
-        <a href="${verificationUrl}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Aktywuj konto</a>
-        <p>Link jest ważny przez 24 godziny.</p>
-        <p>Jeśli nie rejestrowałeś się w Sanguivia, zignoruj ten email.</p>
-      `
-    });
+    // await transporter.sendMail({
+    //   from: process.env.EMAIL_USER,
+    //   to: email,
+    //   subject: 'Aktywacja konta Sanguivia',
+    //   html: `
+    //     <h2>Witaj w Sanguivia!</h2>
+    //     <p>Dziękujemy za rejestrację. Aby aktywować swoje konto, kliknij poniższy link:</p>
+    //     <a href="${verificationUrl}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Aktywuj konto</a>
+    //     <p>Link jest ważny przez 24 godziny.</p>
+    //     <p>Jeśli nie rejestrowałeś się w Sanguivia, zignoruj ten email.</p>
+    //   `
+    // });
 
     clearTimeout(timeout);
     res.status(201).json({ 
