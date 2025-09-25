@@ -1,7 +1,7 @@
 services:
   - type: web
     name: sanguivia-backend
-    env: node
+    runtime: node
     plan: free
     buildCommand: npm install
     startCommand: npm start
