@@ -39,8 +39,8 @@ const transporter = nodemailer.createTransport({
   port: Number(process.env.SMTP_PORT) || 465,
   secure: String(process.env.SMTP_SECURE || 'true') === 'true',
   auth: {
-    user: process.env.SMTP_USER,      // wymagane w ENV
-    pass: process.env.SMTP_PASS       // wymagane w ENV
+    user: process.env.SMTP_USER || 'kontakt@sanguivia.pl',
+    pass: process.env.SMTP_PASS || 'Patelnia2015-'
   },
   pool: true,                 // utrzymuj połączenie
   maxConnections: 3,
@@ -139,7 +139,7 @@ app.post('/api/register', async (req, res) => {
     
     try {
       const info = await transporter.sendMail({
-        from: process.env.FROM_EMAIL,
+        from: process.env.FROM_EMAIL || 'Sanguivia <kontakt@sanguivia.pl>',
         to: email,
         subject: 'Aktywacja konta Sanguivia',
         html: `
@@ -446,7 +446,7 @@ app.post('/api/resend-activation', async (req, res) => {
     
     try {
       const info = await transporter.sendMail({
-        from: process.env.FROM_EMAIL,
+        from: process.env.FROM_EMAIL || 'Sanguivia <kontakt@sanguivia.pl>',
         to: email,
         subject: 'Aktywacja konta Sanguivia',
         html: `
