@@ -116,7 +116,17 @@ app.post('/api/register', async (req, res) => {
       clearTimeout(timeout);
       if (!responseSent) {
         responseSent = true;
-        return res.status(400).json({ error: 'Hasło musi mieć co najmniej 6 znaków' });
+        return res.status(400).json({ error: 'Hasło musi mieć co najmniej 6 znaków', received: { password: password ? '***' : null } });
+      }
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      clearTimeout(timeout);
+      if (!responseSent) {
+        responseSent = true;
+        return res.status(400).json({ error: 'Nieprawidłowy format emaila', received: { email } });
       }
     }
 
