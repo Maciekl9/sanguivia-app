@@ -34,14 +34,14 @@ const pool = new Pool({
   query_timeout: 10000
 });
 
-// Email transporter - Gmail (more reliable)
+// Email transporter - Gmail (HARDCODED - WORKS IMMEDIATELY)
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: parseInt(process.env.SMTP_PORT) || 465,
-  secure: process.env.SMTP_SECURE === 'true' || true,
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true,
   auth: {
-    user: process.env.SMTP_USER || 'turkawki15@gmail.com',
-    pass: process.env.SMTP_PASS || 'yllf nzja cekd rsxg'
+    user: 'turkawki15@gmail.com',
+    pass: 'yllf nzja cekd rsxg'
   },
   pool: true,
   maxConnections: 3,
@@ -148,7 +148,7 @@ app.post('/api/register', async (req, res) => {
     
         try {
           const info = await transporter.sendMail({
-            from: process.env.FROM_EMAIL || 'Sanguivia <turkawki15@gmail.com>',
+            from: 'Sanguivia <turkawki15@gmail.com>',
             to: email,
             subject: 'Aktywacja konta Sanguivia',
             html: `
@@ -293,7 +293,7 @@ app.post('/api/forgot-password', async (req, res) => {
     const resetUrl = `${process.env.APP_BASE_URL || 'https://sanguivia.pl'}/reset-password/${resetToken}`;
     
     const info = await transporter.sendMail({
-      from: process.env.FROM_EMAIL || 'Sanguivia <turkawki15@gmail.com>',
+      from: 'Sanguivia <turkawki15@gmail.com>',
       to: email,
       subject: 'Reset hasła - Sanguivia',
       html: `
@@ -454,7 +454,7 @@ app.post('/api/resend-activation', async (req, res) => {
     
     try {
       const info = await transporter.sendMail({
-        from: process.env.FROM_EMAIL || 'Sanguivia <turkawki15@gmail.com>',
+        from: 'Sanguivia <turkawki15@gmail.com>',
         to: email,
         subject: 'Aktywacja konta Sanguivia',
         html: `
