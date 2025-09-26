@@ -5,6 +5,7 @@ const nodemailer = require('nodemailer');
 const cors = require('cors');
 const { Pool } = require('pg');
 const net = require('net');
+const dns = require('dns').promises;
 require('dotenv').config({ path: './config.env' });
 
 const app = express();
@@ -629,18 +630,19 @@ app.get('/api/health', (req, res) => {
 });
 
 // SMTP Reachability test
-app.get('/api/diag/smtp', (req, res) => {
-  const host = 'serwer2563321.home.pl';
-  const port = 587;
-  const s = net.connect({ host, port, timeout: 10000 }, () => {
-    s.end(); 
-    res.json({ ok: true, host, port, message: 'SMTP port accessible' });
-  });
-  s.on('error', e => res.status(502).json({ ok: false, error: String(e), host, port }));
-  s.on('timeout', () => { 
-    s.destroy(); 
-    res.status(504).json({ ok: false, error: 'connect timeout', host, port }); 
-  });
+app.get('/api/diag/smtp', async (req, res) => {
+  try {
+    const host = process.env.SMTP_HOST || 'serwer2563321.home.pl';
+    const port = Number(process.env.SMTP_PORT || 587);
+    const lookup = await dns.lookup(host, { family: 4 });
+    const s = net.connect({ host: lookup.address, port, timeout: 10000 }, () => {
+      s.end(); res.json({ ok: true, host, ip: lookup.address, port });
+    });
+    s.on('error', e => res.status(502).json({ ok: false, error: String(e) }));
+    s.on('timeout', () => { s.destroy(); res.status(504).json({ ok: false, error: 'connect timeout' }); });
+  } catch (e) {
+    res.status(502).json({ ok: false, error: String(e) });
+  }
 });
 
 // Send verification email endpoint
