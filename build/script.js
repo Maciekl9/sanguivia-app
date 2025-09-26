@@ -581,23 +581,29 @@ document.addEventListener('DOMContentLoaded', () => {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 60000);
             
-            const response = await fetch('https://sanguivia-ap.onrender.com/auth/send-verify', {
+            const response = await fetch('https://sanguivia-ap.onrender.com/api/resend-activation', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ userId: 1, email }),
+                body: JSON.stringify({ email }),
                 signal: controller.signal
             });
             
             clearTimeout(timeoutId);
             
-            const data = await response.json();
+            const contentType = response.headers.get('content-type') || '';
+            const raw = await response.text();
             
-            if (response.ok) {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status} ${response.statusText} :: ${raw.slice(0,200)}`);
+            }
+            
+            if (contentType.includes('application/json')) {
+                const data = JSON.parse(raw);
                 alert('✅ Email aktywacyjny został wysłany ponownie!');
             } else {
-                alert('❌ Błąd: ' + data.error);
+                throw new Error(`Expected JSON, got: ${contentType} :: ${raw.slice(0,200)}`);
             }
         } catch (error) {
             console.error('Resend activation error:', error);
@@ -638,12 +644,18 @@ async function resendActivationEmail() {
         
         clearTimeout(timeoutId);
         
-        const data = await response.json();
+        const contentType = response.headers.get('content-type') || '';
+        const raw = await response.text();
         
-        if (response.ok) {
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status} ${response.statusText} :: ${raw.slice(0,200)}`);
+        }
+        
+        if (contentType.includes('application/json')) {
+            const data = JSON.parse(raw);
             alert('✅ Email aktywacyjny został wysłany ponownie!');
         } else {
-            alert('❌ Błąd: ' + data.error);
+            throw new Error(`Expected JSON, got: ${contentType} :: ${raw.slice(0,200)}`);
         }
     } catch (error) {
         console.error('Resend activation error:', error);
