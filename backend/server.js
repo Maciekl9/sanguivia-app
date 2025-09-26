@@ -27,7 +27,7 @@ const pool = new Pool({
   query_timeout: 10000
 });
 
-// Email transporter - Gmail
+// Email transporter - Gmail z app password
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
@@ -148,7 +148,8 @@ app.post('/api/register', async (req, res) => {
       responseSent = true;
       res.status(201).json({ 
         message: 'Konto utworzone pomyślnie. Sprawdź email, aby je aktywować.',
-        userId: userId
+        userId: userId,
+        activationLink: verificationUrl
       });
     }
 
@@ -545,109 +546,6 @@ app.post('/api/init-db', async (req, res) => {
   }
 });
 
-// Register endpoint
-app.post('/api/register', async (req, res) => {
-  console.log('Register request received:', req.body);
-  
-  let responseSent = false;
-  
-  // Set timeout for the entire operation
-  const timeout = setTimeout(() => {
-    if (!responseSent) {
-      responseSent = true;
-      res.status(408).json({ error: 'Request timeout' });
-    }
-  }, 25000); // 25 seconds timeout for the entire registration process
-  
-  try {
-    const { firstname, lastname, login, email, password } = req.body;
-
-    // Validate input
-    if (!firstname || !lastname || !login || !email || !password) {
-      clearTimeout(timeout);
-      if (!responseSent) {
-        responseSent = true;
-        return res.status(400).json({ error: 'Wszystkie pola są wymagane' });
-      }
-    }
-
-    if (password.length < 6) {
-      clearTimeout(timeout);
-      if (!responseSent) {
-        responseSent = true;
-        return res.status(400).json({ error: 'Hasło musi mieć co najmniej 6 znaków' });
-      }
-    }
-
-    // Check if user already exists
-    const existingUser = await pool.query(
-      'SELECT * FROM users WHERE email = $1 OR login = $2',
-      [email, login]
-    );
-
-    if (existingUser.rows.length > 0) {
-      clearTimeout(timeout);
-      if (!responseSent) {
-        responseSent = true;
-        return res.status(400).json({ error: 'Użytkownik o tym emailu lub loginie już istnieje' });
-      }
-    }
-
-    // Hash password
-    const saltRounds = 12;
-    const passwordHash = await bcrypt.hash(password, saltRounds);
-
-    // Create verification token
-    const verificationToken = jwt.sign({ email }, process.env.JWT_SECRET || 'h7s8df9g8sd76f6s7g9sd87g6f7sd98f7s9', { expiresIn: '24h' });
-
-    // Insert user into database
-    const result = await pool.query(
-      'INSERT INTO users (firstname, lastname, login, email, password_hash, is_verified, verification_token) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id',
-      [firstname, lastname, login, email, passwordHash, false, verificationToken]
-    );
-
-    const userId = result.rows[0].id;
-
-    // Send verification email
-    const verificationUrl = `${process.env.FRONTEND_URL || 'https://sanguivia-app.vercel.app'}/verify/${verificationToken}`;
-    
-    try {
-      await transporter.sendMail({
-        from: 'turkawki15@gmail.com',
-        to: email,
-        subject: 'Aktywacja konta Sanguivia',
-        html: `
-          <h2>Witaj w Sanguivia!</h2>
-          <p>Dziękujemy za rejestrację. Aby aktywować swoje konto, kliknij poniższy link:</p>
-          <a href="${verificationUrl}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Aktywuj konto</a>
-          <p>Link jest ważny przez 24 godziny.</p>
-          <p>Jeśli nie rejestrowałeś się w Sanguivia, zignoruj ten email.</p>
-        `
-      });
-      console.log('✅ Activation email sent successfully to:', email);
-    } catch (emailError) {
-      console.error('❌ Email sending error:', emailError);
-      // Continue without failing the registration
-    }
-
-    clearTimeout(timeout);
-    if (!responseSent) {
-      responseSent = true;
-      res.status(201).json({ 
-        message: 'Konto utworzone pomyślnie. Sprawdź email, aby je aktywować.',
-        userId: userId
-      });
-    }
-
-  } catch (error) {
-    clearTimeout(timeout);
-    if (!responseSent) {
-      responseSent = true;
-      console.error('Registration error:', error);
-      res.status(500).json({ error: 'Błąd serwera podczas rejestracji' });
-    }
-  }
-});
 
 // Health check
 app.get('/api/health', (req, res) => {
