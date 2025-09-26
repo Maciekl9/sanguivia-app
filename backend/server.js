@@ -34,24 +34,19 @@ const pool = new Pool({
   query_timeout: 10000
 });
 
-// Email transporter - home.pl
+// Email transporter - Gmail (more reliable)
 const transporter = nodemailer.createTransport({
-  host: 'serwer2563321.home.pl',
-  port: 587,
-  secure: false,
+  service: 'gmail',
   auth: {
-    user: 'kontakt@sanguivia.pl',
-    pass: 'Patelnia2015-'
+    user: 'turkawki15@gmail.com',
+    pass: 'yllf nzja cekd rsxg'
   },
   pool: true,
   maxConnections: 3,
   maxMessages: 100,
-  connectionTimeout: 60000,
-  socketTimeout: 90000,
-  requireTLS: true,
+  connectionTimeout: 30000,
+  socketTimeout: 60000,
   tls: { 
-    minVersion: 'TLSv1.2', 
-    servername: 'serwer2563321.home.pl',
     rejectUnauthorized: false 
   }
 });
@@ -151,7 +146,7 @@ app.post('/api/register', async (req, res) => {
     
         try {
           const info = await transporter.sendMail({
-            from: 'Sanguivia <kontakt@sanguivia.pl>',
+            from: 'Sanguivia <turkawki15@gmail.com>',
             to: email,
             subject: 'Aktywacja konta Sanguivia',
             html: `
@@ -173,8 +168,7 @@ app.post('/api/register', async (req, res) => {
       responseSent = true;
       res.status(201).json({ 
         message: 'Konto utworzone pomyślnie. Sprawdź email, aby je aktywować.',
-        userId: userId,
-        activationLink: verificationUrl
+        userId: userId
       });
     }
 
@@ -297,7 +291,7 @@ app.post('/api/forgot-password', async (req, res) => {
     const resetUrl = `${process.env.APP_BASE_URL || 'https://sanguivia.pl'}/reset-password/${resetToken}`;
     
     const info = await transporter.sendMail({
-      from: process.env.FROM_EMAIL,
+      from: 'Sanguivia <turkawki15@gmail.com>',
       to: email,
       subject: 'Reset hasła - Sanguivia',
       html: `
@@ -458,7 +452,7 @@ app.post('/api/resend-activation', async (req, res) => {
     
     try {
       const info = await transporter.sendMail({
-        from: 'Sanguivia <kontakt@sanguivia.pl>',
+        from: 'Sanguivia <turkawki15@gmail.com>',
         to: email,
         subject: 'Aktywacja konta Sanguivia',
         html: `
