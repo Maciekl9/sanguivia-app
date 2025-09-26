@@ -27,14 +27,14 @@ const pool = new Pool({
   query_timeout: 10000
 });
 
-// Email transporter - home.pl
+// Email transporter - home.pl z zmiennych środowiskowych
 const transporter = nodemailer.createTransport({
-  host: 'serwer2563321.home.pl',
-  port: 465,
-  secure: true,
+  host: process.env.SMTP_HOST || 'serwer2563321.home.pl',
+  port: Number(process.env.SMTP_PORT) || 465,
+  secure: String(process.env.SMTP_SECURE) === 'true',
   auth: {
-    user: 'kontakt@sanguivia.pl',
-    pass: 'Patelnia2015-'
+    user: process.env.SMTP_USER || 'kontakt@sanguivia.pl',
+    pass: process.env.SMTP_PASS || 'Patelnia2015-'
   }
 });
 
@@ -113,7 +113,7 @@ app.post('/api/register', async (req, res) => {
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
     // Create verification token
-    const verificationToken = jwt.sign({ email }, process.env.JWT_SECRET || 'h7s8df9g8sd76f6s7g9sd87g6f7sd98f7s9', { expiresIn: '24h' });
+    const verificationToken = jwt.sign({ email }, process.env.APP_JWT_SECRET || 'h7s8df9g8sd76f6s7g9sd87g6f7sd98f7s9', { expiresIn: '24h' });
 
     // Insert user into database
     const result = await pool.query(
@@ -124,11 +124,11 @@ app.post('/api/register', async (req, res) => {
     const userId = result.rows[0].id;
 
     // Send verification email
-    const verificationUrl = `${process.env.FRONTEND_URL || 'https://sanguivia-app.vercel.app'}/verify/${verificationToken}`;
+    const verificationUrl = `${process.env.APP_BASE_URL || 'https://sanguivia.pl'}/verify/${verificationToken}`;
     
     try {
       await transporter.sendMail({
-        from: 'Sanguivia <kontakt@sanguivia.pl>',
+        from: process.env.FROM_EMAIL || 'Sanguivia <kontakt@sanguivia.pl>',
         to: email,
         subject: 'Aktywacja konta Sanguivia',
         html: `
@@ -171,7 +171,7 @@ app.get('/api/verify/:token', async (req, res) => {
     const { token } = req.params;
 
     // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'h7s8df9g8sd76f6s7g9sd87g6f7sd98f7s9');
+    const decoded = jwt.verify(token, process.env.APP_JWT_SECRET || 'h7s8df9g8sd76f6s7g9sd87g6f7sd98f7s9');
     
     // Update user verification status
     const result = await pool.query(
@@ -222,7 +222,7 @@ app.post('/api/login', async (req, res) => {
     // Generate JWT token
     const token = jwt.sign(
       { userId: user.id, email: user.email },
-      process.env.JWT_SECRET || 'h7s8df9g8sd76f6s7g9sd87g6f7sd98f7s9',
+      process.env.APP_JWT_SECRET || 'h7s8df9g8sd76f6s7g9sd87g6f7sd98f7s9',
       { expiresIn: process.env.JWT_EXPIRES_IN }
     );
 
@@ -262,7 +262,7 @@ app.post('/api/forgot-password', async (req, res) => {
     const user = result.rows[0];
 
     // Generate reset token
-    const resetToken = jwt.sign({ userId: user.id }, process.env.JWT_SECRET || 'h7s8df9g8sd76f6s7g9sd87g6f7sd98f7s9', { expiresIn: '1h' });
+    const resetToken = jwt.sign({ userId: user.id }, process.env.APP_JWT_SECRET || 'h7s8df9g8sd76f6s7g9sd87g6f7sd98f7s9', { expiresIn: '1h' });
 
     // Update user with reset token
     await pool.query(
@@ -274,7 +274,7 @@ app.post('/api/forgot-password', async (req, res) => {
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
     
     await transporter.sendMail({
-      from: 'Sanguivia <kontakt@sanguivia.pl>',
+      from: process.env.FROM_EMAIL || 'Sanguivia <kontakt@sanguivia.pl>',
       to: email,
       subject: 'Reset hasła - Sanguivia',
       html: `
@@ -306,7 +306,7 @@ app.post('/api/reset-password/:token', async (req, res) => {
     }
 
     // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'h7s8df9g8sd76f6s7g9sd87g6f7sd98f7s9');
+    const decoded = jwt.verify(token, process.env.APP_JWT_SECRET || 'h7s8df9g8sd76f6s7g9sd87g6f7sd98f7s9');
     
     // Find user with this reset token
     const result = await pool.query(
@@ -340,7 +340,7 @@ app.post('/api/reset-password/:token', async (req, res) => {
 app.get('/api/verify-token/:token', async (req, res) => {
   try {
     const { token } = req.params;
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'h7s8df9g8sd76f6s7g9sd87g6f7sd98f7s9');
+    const decoded = jwt.verify(token, process.env.APP_JWT_SECRET || 'h7s8df9g8sd76f6s7g9sd87g6f7sd98f7s9');
     res.json({ valid: true, decoded });
   } catch (error) {
     res.json({ valid: false });
@@ -370,7 +370,7 @@ app.post('/api/send-activation', async (req, res) => {
     }
     
     // Generate new verification token
-    const verificationToken = jwt.sign({ email }, process.env.JWT_SECRET || 'h7s8df9g8sd76f6s7g9sd87g6f7sd98f7s9', { expiresIn: '24h' });
+    const verificationToken = jwt.sign({ email }, process.env.APP_JWT_SECRET || 'h7s8df9g8sd76f6s7g9sd87g6f7sd98f7s9', { expiresIn: '24h' });
     
     // Update user with new token
     await pool.query('UPDATE users SET verification_token = $1 WHERE email = $2', [verificationToken, email]);
@@ -423,17 +423,17 @@ app.post('/api/resend-activation', async (req, res) => {
     }
     
     // Generate new verification token
-    const verificationToken = jwt.sign({ email }, process.env.JWT_SECRET || 'h7s8df9g8sd76f6s7g9sd87g6f7sd98f7s9', { expiresIn: '24h' });
+    const verificationToken = jwt.sign({ email }, process.env.APP_JWT_SECRET || 'h7s8df9g8sd76f6s7g9sd87g6f7sd98f7s9', { expiresIn: '24h' });
     
     // Update user with new token
     await pool.query('UPDATE users SET verification_token = $1 WHERE email = $2', [verificationToken, email]);
     
     // Send activation email
-    const activationLink = `${process.env.FRONTEND_URL || 'https://sanguivia-app.vercel.app'}/verify/${verificationToken}`;
+    const activationLink = `${process.env.APP_BASE_URL || 'https://sanguivia.pl'}/verify/${verificationToken}`;
     
     try {
       await transporter.sendMail({
-        from: 'Sanguivia <kontakt@sanguivia.pl>',
+        from: process.env.FROM_EMAIL || 'Sanguivia <kontakt@sanguivia.pl>',
         to: email,
         subject: 'Aktywacja konta Sanguivia - Ponownie',
         html: `
