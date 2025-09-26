@@ -33,9 +33,9 @@ const pool = new Pool({
   query_timeout: 10000
 });
 
-// Email transporter - home.pl (587/STARTTLS - lepsze dla chmur!)
+// Email transporter - home.pl (serwer2563321.home.pl - PRAWIDŁOWY HOST!)
 const transporter = nodemailer.createTransport({
-  host: 'smtp.home.pl',
+  host: 'serwer2563321.home.pl',
   port: 587,
   secure: false,
   auth: {
@@ -45,12 +45,12 @@ const transporter = nodemailer.createTransport({
   pool: true,
   maxConnections: 3,
   maxMessages: 100,
-  connectionTimeout: 120000,  // 120s na nawiązanie połączenia
-  socketTimeout: 180000,      // 180s na transfer
+  connectionTimeout: 60000,   // 60s na nawiązanie połączenia
+  socketTimeout: 90000,       // 90s na transfer
   requireTLS: true,
   tls: { 
     minVersion: 'TLSv1.2', 
-    servername: 'smtp.home.pl',
+    servername: 'serwer2563321.home.pl',
     rejectUnauthorized: false 
   }
 });
@@ -619,7 +619,7 @@ app.get('/api/health', (req, res) => {
 
 // SMTP Reachability test
 app.get('/api/diag/smtp', (req, res) => {
-  const host = 'smtp.home.pl';
+  const host = 'serwer2563321.home.pl';
   const port = 587;
   const s = net.connect({ host, port, timeout: 10000 }, () => {
     s.end(); 
