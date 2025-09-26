@@ -539,6 +539,37 @@ app.delete('/api/delete-user', async (req, res) => {
   }
 });
 
+// Verify token endpoint
+app.get('/verify/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+    
+    // Verify JWT token
+    const decoded = jwt.verify(token, 'h7s8df9g8sd76f6s7g9sd87g6f7sd98f7s9');
+    
+    // Find user by email from token
+    const result = await pool.query('SELECT * FROM users WHERE email = $1', [decoded.email]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Użytkownik nie znaleziony' });
+    }
+    
+    const user = result.rows[0];
+    
+    if (user.is_verified) {
+      return res.json({ message: 'Konto już jest aktywowane' });
+    }
+    
+    // Activate user
+    await pool.query('UPDATE users SET is_verified = true WHERE email = $1', [decoded.email]);
+    
+    res.json({ message: 'Konto zostało aktywowane pomyślnie!' });
+  } catch (error) {
+    console.error('Verify token error:', error);
+    res.status(400).json({ error: 'Nieprawidłowy lub wygasły token' });
+  }
+});
+
 // List all users endpoint
 app.get('/api/users', async (req, res) => {
   try {
