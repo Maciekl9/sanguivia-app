@@ -1,0 +1,37 @@
+services:
+  - type: web
+    name: sanguivia-backend
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        value: postgresql://sanguivia_db_user:hV5Jo573qoyIWfstQnv76QBZ31HmWE05@dpg-d3akjop5pdvs73cvbftg-a.oregon-postgres.render.com/sanguivia_db?sslmode=require
+      - key: APP_BASE_URL
+        value: https://sanguivia.pl
+      - key: APP_JWT_SECRET
+        value: h7s8df9g8sd76f6s7g9sd87g6f7sd98f7s9
+      - key: FROM_EMAIL
+        value: Sanguivia <turkawki15@gmail.com>
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PASS
+        value: tzfg hfco gebi gqxe
+      - key: SMTP_PORT
+        value: 465
+      - key: SMTP_SECURE
+        value: "true"
+      - key: SMTP_USER
+        value: turkawki15@gmail.com
+
+databases:
+  - name: sanguivia-db
+    plan: free
+    databaseName: sanguivia_db
+    user: sanguivia_db_user

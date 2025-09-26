@@ -20,12 +20,12 @@ if not exist "node_modules\electron\dist\electron.exe" (
 )
 
 echo Uruchamianie aplikacji...
-start "" "node_modules\electron\dist\electron.exe" "build\electron.js"
+start "" "node_modules\electron\dist\electron.exe" "electron-simple.js"
 echo.
 echo Aplikacja została uruchomiona!
 echo.
 echo Dane logowania:
-echo Email: kontakt+sanguivia_pl.serwer2563321@serwer2563321.home.pl
-echo Hasło: nmcp-mopc-ddlr-cytl
+echo Email: test@sanguivia.pl
+echo Hasło: Test123!
 echo.
 pause

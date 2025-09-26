@@ -1,0 +1,13 @@
+# Ignore Electron files
+build/
+dist/
+node_modules/
+*.exe
+*.msi
+*.dmg
+*.deb
+*.rpm
+*.AppImage
+
+# Keep only backend
+!backend/
