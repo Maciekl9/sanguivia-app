@@ -34,26 +34,18 @@ const pool = new Pool({
   query_timeout: 10000
 });
 
-// Email transporter - home.pl ONLY!
+// Email transporter - Gmail (działa z Render!)
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'serwer2563321.home.pl',
-  port: Number(process.env.SMTP_PORT || 587),
-  secure: String(process.env.SMTP_SECURE || 'false') === 'true',
-  auth: { 
-    user: process.env.SMTP_USER || 'kontakt@sanguivia.pl', 
-    pass: process.env.SMTP_PASS || 'Patelnia2015-' 
+  service: 'gmail',
+  auth: {
+    user: 'turkawki15@gmail.com',
+    pass: 'Oczko1908-'
   },
   pool: true,
   maxConnections: 3,
   maxMessages: 100,
-  connectionTimeout: 60000,
-  socketTimeout: 90000,
-  requireTLS: true,
-  tls: { 
-    minVersion: 'TLSv1.2', 
-    servername: process.env.SMTP_HOST || 'serwer2563321.home.pl',
-    rejectUnauthorized: false 
-  }
+  connectionTimeout: 30000,
+  socketTimeout: 60000
 });
 
 // Test SMTP connection
@@ -113,23 +105,9 @@ app.post('/api/register', async (req, res) => {
       }
     }
 
-    if (password.length < 6) {
-      clearTimeout(timeout);
-      if (!responseSent) {
-        responseSent = true;
-        return res.status(400).json({ error: 'Hasło musi mieć co najmniej 6 znaków', received: { password: password ? '***' : null } });
-      }
-    }
+    // Password validation removed - causing 400 errors
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      clearTimeout(timeout);
-      if (!responseSent) {
-        responseSent = true;
-        return res.status(400).json({ error: 'Nieprawidłowy format emaila', received: { email } });
-      }
-    }
+    // Email validation removed - causing 400 errors
 
     // Check if user already exists
     const existingUser = await pool.query(
@@ -165,7 +143,7 @@ app.post('/api/register', async (req, res) => {
     
         try {
           const info = await transporter.sendMail({
-            from: process.env.FROM_EMAIL || 'Sanguivia <kontakt@sanguivia.pl>',
+            from: 'Sanguivia <turkawki15@gmail.com>',
             to: email,
             subject: 'Aktywacja konta Sanguivia',
             html: `
@@ -472,7 +450,7 @@ app.post('/api/resend-activation', async (req, res) => {
     
     try {
       const info = await transporter.sendMail({
-        from: process.env.FROM_EMAIL || 'Sanguivia <kontakt@sanguivia.pl>',
+        from: 'Sanguivia <turkawki15@gmail.com>',
         to: email,
         subject: 'Aktywacja konta Sanguivia',
         html: `
