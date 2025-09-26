@@ -563,51 +563,51 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Global function to resend activation email from login page
-async function resendActivationEmailFromLogin() {
-    const email = document.getElementById('email').value;
-    if (!email) {
-        alert('Proszę wprowadzić email');
-        return;
-    }
-    
-    // Show loading state
-    const button = event.target;
-    const originalText = button.innerHTML;
-    button.innerHTML = '⏳ Wysyłanie...';
-    button.disabled = true;
-    
-    try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 60000);
-        
-        const response = await fetch('https://sanguivia-ap.onrender.com/api/resend-activation', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ email }),
-            signal: controller.signal
-        });
-        
-        clearTimeout(timeoutId);
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-            alert('✅ Email aktywacyjny został wysłany ponownie!');
-        } else {
-            alert('❌ Błąd: ' + data.error);
+    // Global function to resend activation email from login page
+    async function resendActivationEmailFromLogin() {
+        const email = document.getElementById('email').value;
+        if (!email) {
+            alert('Proszę wprowadzić email');
+            return;
         }
-    } catch (error) {
-        console.error('Resend activation error:', error);
-        alert('❌ Błąd wysyłania emaila: ' + error.message);
-    } finally {
-        // Restore button state
-        button.innerHTML = originalText;
-        button.disabled = false;
+        
+        // Show loading state
+        const button = event.target;
+        const originalText = button.innerHTML;
+        button.innerHTML = '⏳ Wysyłanie...';
+        button.disabled = true;
+        
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 60000);
+            
+            const response = await fetch('https://sanguivia-ap.onrender.com/auth/send-verify', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ userId: 1, email }),
+                signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                alert('✅ Email aktywacyjny został wysłany ponownie!');
+            } else {
+                alert('❌ Błąd: ' + data.error);
+            }
+        } catch (error) {
+            console.error('Resend activation error:', error);
+            alert('❌ Błąd wysyłania emaila: ' + error.message);
+        } finally {
+            // Restore button state
+            button.innerHTML = originalText;
+            button.disabled = false;
+        }
     }
-}
 
 // Global function to resend activation email
 async function resendActivationEmail() {

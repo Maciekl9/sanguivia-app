@@ -10,11 +10,17 @@ const app = express();
 const PORT = process.env.PORT || 10000;
 
 // Middleware
-app.use(cors({
-  origin: ['https://sanguivia-app.vercel.app', 'http://localhost:3000', 'file://'],
-  credentials: true
-}));
+app.use(cors({ origin: true }));
+app.options('*', cors());
 app.use(express.json());
+
+// CORS headers for all responses
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', 'content-type, authorization');
+  if (req.method === 'OPTIONS') return res.status(204).end();
+  next();
+});
 
 // Database connection
 const pool = new Pool({
@@ -552,6 +558,49 @@ app.post('/api/init-db', async (req, res) => {
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Sanguivia API is running' });
+});
+
+// Health check for Render
+app.get('/healthz', (req, res) => {
+  res.json({ status: 'OK', message: 'Sanguivia API is running' });
+});
+
+// Send verification email endpoint
+app.post('/auth/send-verify', async (req, res) => {
+  console.log('SEND-VERIFY IN', req.body);
+  
+  try {
+    const { userId, email } = req.body || {};
+    if (!userId || !email) {
+      return res.status(400).json({ error: 'Missing userId/email' });
+    }
+
+    // Generate verification token
+    const verificationToken = jwt.sign({ email }, process.env.APP_JWT_SECRET || 'h7s8df9g8sd76f6s7g9sd87g6f7sd98f7s9', { expiresIn: '24h' });
+    
+    // Create verification URL
+    const verificationUrl = `${process.env.APP_BASE_URL || 'https://sanguivia.pl'}/verify/${verificationToken}`;
+    
+    // Send email
+    const info = await transporter.sendMail({
+      from: process.env.FROM_EMAIL || 'Sanguivia <kontakt@sanguivia.pl>',
+      to: email,
+      subject: 'Aktywacja konta Sanguivia',
+      html: `
+        <h2>Witaj w Sanguivia!</h2>
+        <p>Dziękujemy za rejestrację. Aby aktywować swoje konto, kliknij poniższy link:</p>
+        <a href="${verificationUrl}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Aktywuj konto</a>
+        <p>Link jest ważny przez 24 godziny.</p>
+        <p>Jeśli nie rejestrowałeś się w Sanguivia, zignoruj ten email.</p>
+      `
+    });
+    
+    console.log('MAIL OK', info.messageId);
+    res.json({ ok: true, id: info.messageId });
+  } catch (e) {
+    console.error('MAIL ERR', e);
+    res.status(502).json({ error: 'MAIL_SEND_FAILED', detail: String(e?.response || e?.message) });
+  }
 });
 
 // Start server
