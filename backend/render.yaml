@@ -19,21 +19,25 @@ services:
       - key: DB_USER
         value: sanguivia_db_user
       - key: DB_PASSWORD
-        value: hV5Jo573qoyIWfstQnv76QBZ31HmWE05
-      - key: JWT_SECRET
+        value: hV5Jo573qoyIWfstQnv76QBZ3lHmWEO5
+      - key: APP_JWT_SECRET
         generateValue: true
       - key: JWT_EXPIRES_IN
         value: 24h
-      - key: EMAIL_HOST
-        value: smtp.gmail.com
-      - key: EMAIL_PORT
-        value: 587
-      - key: EMAIL_USER
-        value: twoj-email@gmail.com
-      - key: EMAIL_PASS
-        value: twoje-haslo-aplikacji-gmail
-      - key: FRONTEND_URL
-        value: https://sanguivia-app.vercel.app
+      - key: SMTP_HOST
+        value: serwer2563321.home.pl
+      - key: SMTP_PORT
+        value: 465
+      - key: SMTP_SECURE
+        value: true
+      - key: SMTP_USER
+        value: kontakt@sanguivia.pl
+      - key: SMTP_PASS
+        value: Patelnia2015-
+      - key: FROM_EMAIL
+        value: Sanguivia <kontakt@sanguivia.pl>
+      - key: APP_BASE_URL
+        value: https://sanguivia.pl
 
 databases:
   - name: sanguivia-db
