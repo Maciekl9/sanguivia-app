@@ -48,7 +48,15 @@ const transporter = nodemailer.createTransport({
   socketTimeout: 60000        // 60s na transfer
 });
 
-// 
+// Test SMTP connection
+transporter.verify((error, success) => {
+  if (error) {
+    console.error('❌ SMTP connection error:', error.message);
+  } else {
+    console.log('✅ SMTP server is ready to take our messages');
+  }
+});
+
 // Test database connection
 pool.connect((err, client, release) => {
   if (err) {
