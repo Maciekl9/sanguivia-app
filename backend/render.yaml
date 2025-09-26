@@ -21,11 +21,11 @@ services:
       - key: SMTP_HOST
         value: smtp.gmail.com
       - key: SMTP_PASS
-        value: yllf nzja cekd rsxg
+        value: tzfg hfco gebi gqxe
       - key: SMTP_PORT
         value: 465
       - key: SMTP_SECURE
-        value: true"
+        value: "true"
       - key: SMTP_USER
         value: turkawki15@gmail.com
 
@@ -34,3 +34,4 @@ databases:
     plan: free
     databaseName: sanguivia_db
     user: sanguivia_db_user
+    

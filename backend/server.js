@@ -1,20 +1,20 @@
 const express = require('express');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const nodemailer = require('nodemailer');
 const cors = require('cors');
+const nodemailer = require('nodemailer');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const { Pool } = require('pg');
-const net = require('net');
 const dns = require('dns').promises;
-require('dotenv').config({ path: './config.env' });
+const net = require('net');
 
 const app = express();
 const PORT = process.env.PORT || 10000;
 
 // Middleware
-app.use(cors({ origin: true })); // to ogarnie też preflight
+app.use(cors({ origin: true }));
 app.use(express.json());
 
+// Global preflight handler
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'content-type, authorization');
@@ -23,562 +23,138 @@ app.use((req, res, next) => {
   next();
 });
 
-// Database connection
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://sanguivia_db_user:hV5Jo573qoyIWfstQnv76QBZ3lHmWEO5@dpg-d3akjop5pdvs73cvbftg-a.oregon-postgres.render.com/sanguivia_db',
-  ssl: {
-    rejectUnauthorized: false
-  },
-  connectionTimeoutMillis: 10000,
-  idleTimeoutMillis: 30000,
-  query_timeout: 10000
-});
+// Database connection (optional - only if DATABASE_URL is present)
+let pool = null;
+if (process.env.DATABASE_URL) {
+  pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.DATABASE_URL.includes('sslmode=require') ? { rejectUnauthorized: false } : false,
+    connectionTimeoutMillis: 10000,
+    idleTimeoutMillis: 30000
+  });
+}
 
-// Email transporter - Gmail (HARDCODED - WORKS IMMEDIATELY)
+// In-memory storage (fallback if no database)
+const users = new Map();
+
+// Email transporter configuration
 const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 465,
-  secure: true,
+  host: process.env.SMTP_HOST || 'smtp.gmail.com',
+  port: Number(process.env.SMTP_PORT || 465),
+  secure: String(process.env.SMTP_SECURE || 'true') === 'true',
   auth: {
-    user: 'turkawki15@gmail.com',
-    pass: 'yllf nzja cekd rsxg'
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS
   },
   pool: true,
   maxConnections: 3,
   maxMessages: 100,
-  connectionTimeout: 30000,
-  socketTimeout: 60000,
-  tls: { 
-    rejectUnauthorized: false 
-  }
+  connectionTimeout: 60000,
+  socketTimeout: 90000,
+  requireTLS: true
 });
 
-// Test SMTP connection
+// Test SMTP connection on startup
 transporter.verify((error, success) => {
   if (error) {
     console.error('❌ SMTP connection error:', error.message);
-    console.error('❌ SMTP error details:', error);
   } else {
     console.log('✅ SMTP server is ready to take our messages');
   }
 });
 
-// Test database connection
-pool.connect((err, client, release) => {
-  if (err) {
-    console.error('Error connecting to database:', err);
-  } else {
-    console.log('Connected to PostgreSQL database');
-    release();
-  }
-});
+// Test database connection on startup
+if (pool) {
+  pool.connect((err, client, release) => {
+    if (err) {
+      console.error('❌ Database connection error:', err.message);
+    } else {
+      console.log('✅ Connected to PostgreSQL database');
+      release();
+    }
+  });
+}
 
-// Test email connection
-transporter.verify((error, success) => {
-  if (error) {
-    console.error('❌ Email connection error:', error);
+// Helper function to get user by email
+async function getUserByEmail(email) {
+  if (pool) {
+    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    return result.rows[0] || null;
   } else {
-    console.log('✅ Email server is ready to send messages');
+    return users.get(email) || null;
   }
-});
+}
+
+// Helper function to save user
+async function saveUser(user) {
+  if (pool) {
+    const result = await pool.query(
+      'INSERT INTO users (firstname, lastname, login, email, password_hash, is_verified, verification_token, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id',
+      [user.firstname, user.lastname, user.login, user.email, user.password_hash, user.is_verified, user.verification_token, user.created_at]
+    );
+    return result.rows[0].id;
+  } else {
+    const id = Date.now();
+    users.set(user.email, { ...user, id });
+    return id;
+  }
+}
+
+// Helper function to update user
+async function updateUser(email, updates) {
+  if (pool) {
+    const setClause = Object.keys(updates).map((key, index) => `${key} = $${index + 2}`).join(', ');
+    const values = [email, ...Object.values(updates)];
+    await pool.query(`UPDATE users SET ${setClause} WHERE email = $1`, values);
+  } else {
+    const user = users.get(email);
+    if (user) {
+      Object.assign(user, updates);
+      users.set(email, user);
+    }
+  }
+}
 
 // Routes
 
-// Register
-app.post('/api/register', async (req, res) => {
-  console.log('Register request received:', req.body);
-  
-  let responseSent = false;
-  
-  // Set timeout for the entire operation
-  const timeout = setTimeout(() => {
-    if (!responseSent) {
-      responseSent = true;
-      res.status(408).json({ error: 'Request timeout' });
-    }
-  }, 120000);
-  
-  try {
-    const { firstname, lastname, login, email, password } = req.body;
-
-    // Validate input
-    if (!firstname || !lastname || !login || !email || !password) {
-      clearTimeout(timeout);
-      if (!responseSent) {
-        responseSent = true;
-        return res.status(400).json({ error: 'Wszystkie pola są wymagane', received: { firstname, lastname, login, email, password: password ? '***' : null } });
-      }
-    }
-
-    // Password validation removed - causing 400 errors
-
-    // Email validation removed - causing 400 errors
-
-    // Check if user already exists
-    const existingUser = await pool.query(
-      'SELECT * FROM users WHERE email = $1 OR login = $2',
-      [email, login]
-    );
-
-    if (existingUser.rows.length > 0) {
-      clearTimeout(timeout);
-      if (!responseSent) {
-        responseSent = true;
-        return res.status(400).json({ error: 'Użytkownik o tym emailu lub loginie już istnieje' });
-      }
-    }
-
-    // Hash password
-    const saltRounds = 12;
-    const passwordHash = await bcrypt.hash(password, saltRounds);
-
-    // Create verification token
-    const verificationToken = jwt.sign({ email }, process.env.APP_JWT_SECRET || 'h7s8df9g8sd76f6s7g9sd87g6f7sd98f7s9', { expiresIn: '24h' });
-
-    // Insert user into database
-    const result = await pool.query(
-      'INSERT INTO users (firstname, lastname, login, email, password_hash, is_verified, verification_token) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id',
-      [firstname, lastname, login, email, passwordHash, false, verificationToken]
-    );
-
-    const userId = result.rows[0].id;
-
-    // Send verification email
-    const verificationUrl = `${process.env.APP_BASE_URL || 'https://sanguivia.pl'}/verify/${verificationToken}`;
-    
-        try {
-          const info = await transporter.sendMail({
-            from: 'Sanguivia <turkawki15@gmail.com>',
-            to: email,
-            subject: 'Aktywacja konta Sanguivia',
-            html: `
-              <h2>Witaj w Sanguivia!</h2>
-              <p>Dziękujemy za rejestrację. Aby aktywować swoje konto, kliknij poniższy link:</p>
-              <a href="${verificationUrl}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Aktywuj konto</a>
-              <p>Link jest ważny przez 24 godziny.</p>
-              <p>Jeśli nie rejestrowałeś się w Sanguivia, zignoruj ten email.</p>
-            `
-          });
-          console.log('MAIL OK', info.messageId);
-        } catch (e) {
-          console.error('MAIL ERR', e.message, e.code, e.response);
-          // Continue without failing the registration
-        }
-
-    clearTimeout(timeout);
-    if (!responseSent) {
-      responseSent = true;
-      res.status(201).json({ 
-        message: 'Konto utworzone pomyślnie. Sprawdź email, aby je aktywować.',
-        userId: userId
-      });
-    }
-
-  } catch (error) {
-    clearTimeout(timeout);
-    if (!responseSent) {
-      responseSent = true;
-      console.error('Registration error:', error);
-      res.status(500).json({ error: 'Błąd serwera podczas rejestracji' });
-    }
-  }
+// GET /api/health
+app.get('/api/health', (req, res) => {
+  res.json({ ok: true, ts: new Date().toISOString() });
 });
 
-// Verify email
-app.get('/api/verify/:token', async (req, res) => {
+// GET /api/diag/smtp
+app.get('/api/diag/smtp', async (req, res) => {
   try {
-    const { token } = req.params;
-
-    // Verify token
-    const decoded = jwt.verify(token, process.env.APP_JWT_SECRET || 'h7s8df9g8sd76f6s7g9sd87g6f7sd98f7s9');
+    const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+    const port = Number(process.env.SMTP_PORT || 465);
     
-    // Update user verification status
-    const result = await pool.query(
-      'UPDATE users SET is_verified = true, verification_token = NULL WHERE email = $1 AND verification_token = $2',
-      [decoded.email, token]
-    );
-
-    if (result.rowCount === 0) {
-      return res.status(400).json({ error: 'Nieprawidłowy lub wygasły token' });
-    }
-
-    res.json({ message: 'Konto zostało aktywowane pomyślnie!' });
-
-  } catch (error) {
-    console.error('Verification error:', error);
-    res.status(400).json({ error: 'Token wygasł lub jest nieprawidłowy' });
-  }
-});
-
-// Login
-app.post('/api/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    // Find user
-    const result = await pool.query(
-      'SELECT * FROM users WHERE email = $1',
-      [email]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(401).json({ error: 'Nieprawidłowe dane logowania' });
-    }
-
-    const user = result.rows[0];
-
-    // Check if account is verified
-    if (!user.is_verified) {
-      return res.status(401).json({ error: 'Konto nie zostało aktywowane. Sprawdź email.' });
-    }
-
-    // Verify password
-    const isValidPassword = await bcrypt.compare(password, user.password_hash);
-    if (!isValidPassword) {
-      return res.status(401).json({ error: 'Nieprawidłowe dane logowania' });
-    }
-
-    // Generate JWT token
-    const token = jwt.sign(
-      { userId: user.id, email: user.email },
-      process.env.APP_JWT_SECRET || 'h7s8df9g8sd76f6s7g9sd87g6f7sd98f7s9',
-      { expiresIn: process.env.JWT_EXPIRES_IN }
-    );
-
-    res.json({
-      message: 'Logowanie pomyślne',
-      token: token,
-      user: {
-        id: user.id,
-        firstname: user.firstname,
-        lastname: user.lastname,
-        login: user.login,
-        email: user.email
-      }
-    });
-
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'Błąd serwera podczas logowania' });
-  }
-});
-
-// Forgot password
-app.post('/api/forgot-password', async (req, res) => {
-  try {
-    const { email } = req.body;
-
-    // Find user
-    const result = await pool.query(
-      'SELECT * FROM users WHERE email = $1 AND is_verified = true',
-      [email]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Nie znaleziono aktywnego konta o tym adresie email' });
-    }
-
-    const user = result.rows[0];
-
-    // Generate reset token
-    const resetToken = jwt.sign({ userId: user.id }, process.env.APP_JWT_SECRET || 'h7s8df9g8sd76f6s7g9sd87g6f7sd98f7s9', { expiresIn: '1h' });
-
-    // Update user with reset token
-    await pool.query(
-      'UPDATE users SET reset_token = $1 WHERE id = $2',
-      [resetToken, user.id]
-    );
-
-    // Send reset email
-    const resetUrl = `${process.env.APP_BASE_URL || 'https://sanguivia.pl'}/reset-password/${resetToken}`;
+    const lookup = await dns.lookup(host, { family: 4 });
     
-    const info = await transporter.sendMail({
-      from: 'Sanguivia <turkawki15@gmail.com>',
-      to: email,
-      subject: 'Reset hasła - Sanguivia',
-      html: `
-        <h2>Reset hasła</h2>
-        <p>Otrzymałeś prośbę o reset hasła dla konta Sanguivia.</p>
-        <p>Kliknij poniższy link, aby zresetować hasło:</p>
-        <a href="${resetUrl}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Resetuj hasło</a>
-        <p>Link jest ważny przez 1 godzinę.</p>
-        <p>Jeśli nie prosiłeś o reset hasła, zignoruj ten email.</p>
-      `
+    const socket = net.connect({ host: lookup.address, port, timeout: 10000 }, () => {
+      socket.end();
+      res.json({ ok: true, host, ip: lookup.address, port });
     });
     
-    console.log('MAIL OK', info.messageId);
-
-    res.json({ message: 'Link do resetu hasła został wysłany na email' });
-
-  } catch (error) {
-    console.error('Forgot password error:', error);
-    res.status(500).json({ error: 'Błąd serwera podczas resetu hasła' });
+    socket.on('error', (e) => {
+      res.status(502).json({ ok: false, error: e.message });
+    });
+    
+    socket.on('timeout', () => {
+      socket.destroy();
+      res.status(504).json({ ok: false, error: 'connect timeout' });
+    });
+  } catch (e) {
+    res.status(502).json({ ok: false, error: e.message });
   }
 });
 
-// Reset password
-app.post('/api/reset-password/:token', async (req, res) => {
-  try {
-    const { token } = req.params;
-    const { password } = req.body;
-
-    if (!password || password.length < 6) {
-      return res.status(400).json({ error: 'Hasło musi mieć co najmniej 6 znaków' });
-    }
-
-    // Verify token
-    const decoded = jwt.verify(token, process.env.APP_JWT_SECRET || 'h7s8df9g8sd76f6s7g9sd87g6f7sd98f7s9');
-    
-    // Find user with this reset token
-    const result = await pool.query(
-      'SELECT * FROM users WHERE id = $1 AND reset_token = $2',
-      [decoded.userId, token]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(400).json({ error: 'Nieprawidłowy lub wygasły token' });
-    }
-
-    // Hash new password
-    const saltRounds = 12;
-    const passwordHash = await bcrypt.hash(password, saltRounds);
-
-    // Update password and clear reset token
-    await pool.query(
-      'UPDATE users SET password_hash = $1, reset_token = NULL WHERE id = $2',
-      [passwordHash, decoded.userId]
-    );
-
-    res.json({ message: 'Hasło zostało zresetowane pomyślnie' });
-
-  } catch (error) {
-    console.error('Reset password error:', error);
-    res.status(400).json({ error: 'Token wygasł lub jest nieprawidłowy' });
-  }
-});
-
-// Verify token (for frontend)
-app.get('/api/verify-token/:token', async (req, res) => {
-  try {
-    const { token } = req.params;
-    const decoded = jwt.verify(token, process.env.APP_JWT_SECRET || 'h7s8df9g8sd76f6s7g9sd87g6f7sd98f7s9');
-    res.json({ valid: true, decoded });
-  } catch (error) {
-    res.json({ valid: false });
-  }
-});
-
-// Send activation email manually
-app.post('/api/send-activation', async (req, res) => {
-  try {
-    const { email } = req.body;
-    
-    if (!email) {
-      return res.status(400).json({ error: 'Email jest wymagany' });
-    }
-    
-    // Find user by email
-    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Użytkownik nie znaleziony' });
-    }
-    
-    const user = result.rows[0];
-    
-    if (user.is_verified) {
-      return res.status(400).json({ error: 'Konto już jest aktywowane' });
-    }
-    
-    // Generate new verification token
-    const verificationToken = jwt.sign({ email }, process.env.APP_JWT_SECRET || 'h7s8df9g8sd76f6s7g9sd87g6f7sd98f7s9', { expiresIn: '24h' });
-    
-    // Update user with new token
-    await pool.query('UPDATE users SET verification_token = $1 WHERE email = $2', [verificationToken, email]);
-    
-    // Send activation email
-    const activationLink = `${process.env.FRONTEND_URL || 'https://sanguivia-app.vercel.app'}/activate?token=${verificationToken}`;
-    
-    const mailOptions = {
-      from: process.env.EMAIL_USER || 'turkawki15@gmail.com',
-      to: email,
-      subject: 'Aktywacja konta Sanguivia',
-      html: `
-        <h2>Witaj w Sanguivia!</h2>
-        <p>Dziękujemy za rejestrację. Aby aktywować swoje konto, kliknij poniższy link:</p>
-        <a href="${activationLink}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Aktywuj konto</a>
-        <p>Link jest ważny przez 24 godziny.</p>
-        <p>Jeśli nie rejestrowałeś się w Sanguivia, zignoruj ten email.</p>
-      `
-    };
-    
-    await transporter.sendMail(mailOptions);
-    
-    res.json({ message: 'Email aktywacyjny został wysłany' });
-  } catch (error) {
-    console.error('Send activation error:', error);
-    res.status(500).json({ error: 'Błąd wysyłania emaila' });
-  }
-});
-
-// Resend activation email endpoint
-app.post('/api/resend-activation', async (req, res) => {
-  try {
-    const { email } = req.body;
-    
-    if (!email) {
-      return res.status(400).json({ error: 'Email jest wymagany' });
-    }
-    
-    // Find user by email
-    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Użytkownik nie znaleziony' });
-    }
-    
-    const user = result.rows[0];
-    
-    if (user.is_verified) {
-      return res.status(400).json({ error: 'Konto już jest aktywowane' });
-    }
-    
-    // Generate new verification token
-    const verificationToken = jwt.sign({ email }, process.env.APP_JWT_SECRET || 'h7s8df9g8sd76f6s7g9sd87g6f7sd98f7s9', { expiresIn: '24h' });
-    
-    // Update user with new token
-    await pool.query('UPDATE users SET verification_token = $1 WHERE email = $2', [verificationToken, email]);
-    
-    // Send activation email
-    const activationLink = `${process.env.APP_BASE_URL || 'https://sanguivia.pl'}/activate?token=${verificationToken}`;
-    
-    try {
-      const info = await transporter.sendMail({
-        from: 'Sanguivia <turkawki15@gmail.com>',
-        to: email,
-        subject: 'Aktywacja konta Sanguivia',
-        html: `
-          <h2>Witaj w Sanguivia!</h2>
-          <p>Oto nowy link aktywacyjny dla Twojego konta:</p>
-          <a href="${activationLink}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Aktywuj konto</a>
-          <p>Link jest ważny przez 24 godziny.</p>
-          <p>Jeśli nie rejestrowałeś się w Sanguivia, zignoruj ten email.</p>
-        `
-      });
-      
-      console.log('MAIL OK', info.messageId);
-      res.json({ message: 'Email aktywacyjny został wysłany ponownie' });
-    } catch (e) {
-      console.error('MAIL ERR', e);
-      res.status(502).json({ error: 'MAIL_SEND_FAILED', detail: String(e?.response || e?.message) });
-    }
-  } catch (error) {
-    console.error('Resend activation error:', error);
-    res.status(500).json({ error: 'Błąd serwera' });
-  }
-});
-
-// Activate user endpoint (for testing)
-app.post('/api/activate-user', async (req, res) => {
-  try {
-    const { email } = req.body;
-    
-    if (!email) {
-      return res.status(400).json({ error: 'Email jest wymagany' });
-    }
-    
-    // Find user by email
-    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Użytkownik nie znaleziony' });
-    }
-    
-    const user = result.rows[0];
-    
-    if (user.is_verified) {
-      return res.status(400).json({ error: 'Konto już jest aktywowane' });
-    }
-    
-    // Activate user
-    await pool.query('UPDATE users SET is_verified = true WHERE email = $1', [email]);
-    
-    res.json({ message: 'Konto zostało aktywowane pomyślnie' });
-  } catch (error) {
-    console.error('Activate user error:', error);
-    res.status(500).json({ error: 'Błąd serwera' });
-  }
-});
-
-// Delete user endpoint
-app.delete('/api/delete-user', async (req, res) => {
-  try {
-    const { email } = req.body;
-    
-    if (!email) {
-      return res.status(400).json({ error: 'Email jest wymagany' });
-    }
-    
-    // Delete user from database
-    const result = await pool.query('DELETE FROM users WHERE email = $1', [email]);
-    
-    if (result.rowCount === 0) {
-      return res.status(404).json({ error: 'Użytkownik nie znaleziony' });
-    }
-    
-    res.json({ message: 'Użytkownik został usunięty' });
-  } catch (error) {
-    console.error('Delete user error:', error);
-    res.status(500).json({ error: 'Błąd usuwania użytkownika' });
-  }
-});
-
-// Verify token endpoint
-app.get('/verify/:token', async (req, res) => {
-  try {
-    const { token } = req.params;
-    
-    // Verify JWT token
-    const decoded = jwt.verify(token, process.env.APP_JWT_SECRET || 'h7s8df9g8sd76f6s7g9sd87g6f7sd98f7s9');
-    
-    // Find user by email from token
-    const result = await pool.query('SELECT * FROM users WHERE email = $1', [decoded.email]);
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Użytkownik nie znaleziony' });
-    }
-    
-    const user = result.rows[0];
-    
-    if (user.is_verified) {
-      return res.json({ message: 'Konto już jest aktywowane' });
-    }
-    
-    // Activate user
-    await pool.query('UPDATE users SET is_verified = true WHERE email = $1', [decoded.email]);
-    
-    res.json({ message: 'Konto zostało aktywowane pomyślnie!' });
-  } catch (error) {
-    console.error('Verify token error:', error);
-    res.status(400).json({ error: 'Nieprawidłowy lub wygasły token' });
-  }
-});
-
-// List all users endpoint
-app.get('/api/users', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT id, firstname, lastname, login, email, is_verified, created_at FROM users ORDER BY created_at DESC');
-    res.json({ users: result.rows });
-  } catch (error) {
-    console.error('List users error:', error);
-    res.status(500).json({ error: 'Błąd pobierania użytkowników' });
-  }
-});
-
-// Initialize database
+// POST /api/init-db (optional)
 app.post('/api/init-db', async (req, res) => {
+  if (!pool) {
+    return res.status(400).json({ error: 'Database not configured' });
+  }
+  
   try {
-    // Create users table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -588,91 +164,215 @@ app.post('/api/init-db', async (req, res) => {
         email VARCHAR(100) UNIQUE NOT NULL,
         password_hash VARCHAR(255) NOT NULL,
         is_verified BOOLEAN DEFAULT FALSE,
-        verification_token VARCHAR(255),
+        verification_token TEXT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
     
-    res.json({ status: 'OK', message: 'Database initialized successfully' });
+    res.json({ ok: true, message: 'Database initialized successfully' });
   } catch (error) {
     console.error('Database initialization error:', error);
-    res.status(500).json({ error: 'Database initialization failed' });
+    res.status(500).json({ error: 'Database initialization failed', detail: error.message });
   }
 });
 
-
-// Health check for Render
-app.get('/healthz', (req, res) => {
-  res.json({ status: 'OK', message: 'Sanguivia API is running' });
-});
-
-// API Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Sanguivia API is running', timestamp: new Date().toISOString() });
-});
-
-// SMTP Reachability test
-app.get('/api/diag/smtp', async (req, res) => {
+// POST /api/register
+app.post('/api/register', async (req, res) => {
   try {
-    const host = process.env.SMTP_HOST || 'serwer2563321.home.pl';
-    const port = Number(process.env.SMTP_PORT || 587);
-    const lookup = await dns.lookup(host, { family: 4 });
-    const s = net.connect({ host: lookup.address, port, timeout: 10000 }, () => {
-      s.end(); res.json({ ok: true, host, ip: lookup.address, port });
-    });
-    s.on('error', e => res.status(502).json({ ok: false, error: String(e) }));
-    s.on('timeout', () => { s.destroy(); res.status(504).json({ ok: false, error: 'connect timeout' }); });
-  } catch (e) {
-    res.status(502).json({ ok: false, error: String(e) });
-  }
-});
+    const { firstname, lastname, login, email, password } = req.body;
 
-// Send verification email endpoint
-app.post('/auth/send-verify', async (req, res) => {
-  console.log('SEND-VERIFY IN', req.body);
-  
-  try {
-    const { userId, email } = req.body || {};
-    if (!userId || !email) {
-      return res.status(400).json({ error: 'Missing userId/email' });
+    // Validate input
+    if (!firstname || !lastname || !login || !email || !password) {
+      return res.status(400).json({ error: 'Wszystkie pola są wymagane' });
     }
 
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Hasło musi mieć co najmniej 6 znaków' });
+    }
+
+    // Check if user already exists
+    const existingUser = await getUserByEmail(email);
+    if (existingUser) {
+      return res.status(400).json({ error: 'Użytkownik o tym emailu już istnieje' });
+    }
+
+    // Check if login already exists (if using database)
+    if (pool) {
+      const existingLogin = await pool.query('SELECT * FROM users WHERE login = $1', [login]);
+      if (existingLogin.rows.length > 0) {
+        return res.status(400).json({ error: 'Użytkownik o tym loginie już istnieje' });
+      }
+    } else {
+      // Check in memory storage
+      for (const user of users.values()) {
+        if (user.login === login) {
+          return res.status(400).json({ error: 'Użytkownik o tym loginie już istnieje' });
+        }
+      }
+    }
+
+    // Hash password
+    const passwordHash = await bcrypt.hash(password, 12);
+
     // Generate verification token
-    const verificationToken = jwt.sign({ email }, process.env.APP_JWT_SECRET || 'h7s8df9g8sd76f6s7g9sd87g6f7sd98f7s9', { expiresIn: '24h' });
-    
-    // Create verification URL
+    const verificationToken = jwt.sign(
+      { email }, 
+      process.env.APP_JWT_SECRET || 'default-secret-key-min-32-chars', 
+      { expiresIn: '24h' }
+    );
+
+    // Create user object
+    const user = {
+      firstname,
+      lastname,
+      login,
+      email,
+      password_hash: passwordHash,
+      is_verified: false,
+      verification_token: verificationToken,
+      created_at: new Date()
+    };
+
+    // Save user
+    const userId = await saveUser(user);
+
+    // Send verification email
     const verificationUrl = `${process.env.APP_BASE_URL || 'https://sanguivia.pl'}/verify/${verificationToken}`;
     
-    // Send email
-    const info = await transporter.sendMail({
-      from: process.env.FROM_EMAIL,
-      to: email,
-      subject: 'Aktywacja konta Sanguivia',
-      html: `
-        <h2>Witaj w Sanguivia!</h2>
-        <p>Dziękujemy za rejestrację. Aby aktywować swoje konto, kliknij poniższy link:</p>
-        <a href="${verificationUrl}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Aktywuj konto</a>
-        <p>Link jest ważny przez 24 godziny.</p>
-        <p>Jeśli nie rejestrowałeś się w Sanguivia, zignoruj ten email.</p>
-      `
-    });
-    
-    console.log('MAIL OK', info.messageId);
-    res.json({ ok: true, id: info.messageId });
-  } catch (e) {
-    console.error('MAIL ERR', e);
-    res.status(502).json({ error: 'MAIL_SEND_FAILED', detail: String(e?.response || e?.message) });
+    try {
+      const info = await transporter.sendMail({
+        from: process.env.FROM_EMAIL || 'Sanguivia <noreply@sanguivia.pl>',
+        to: email,
+        subject: 'Aktywacja konta — Sanguivia',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #333; text-align: center;">Witaj w Sanguivia!</h2>
+            <p style="color: #666; font-size: 16px; line-height: 1.5;">
+              Kliknij, aby potwierdzić konto (ważne 24h)
+            </p>
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${verificationUrl}" 
+                 style="background-color: #4CAF50; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-size: 16px; display: inline-block;">
+                Aktywuj konto
+              </a>
+            </div>
+            <p style="color: #999; font-size: 14px; text-align: center;">
+              Jeśli to nie Ty – zignoruj tę wiadomość.
+            </p>
+          </div>
+        `
+      });
+      
+      console.log('MAIL OK', info.messageId);
+      res.status(201).json({ ok: true, userId });
+      
+    } catch (mailError) {
+      console.error('MAIL ERR', mailError.message);
+      res.status(500).json({ error: 'MAIL_SEND_FAILED', detail: mailError.message });
+    }
+
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(500).json({ error: 'Server error', detail: error.message });
   }
 });
 
-// GET /verify/:token - przekierowanie na API
-app.get('/verify/:token', (req, res) => {
-  const { token } = req.params;
-  res.redirect(`/api/verify/${token}`);
+// GET /api/verify/:token
+app.get('/api/verify/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    // Verify JWT token
+    const decoded = jwt.verify(token, process.env.APP_JWT_SECRET || 'default-secret-key-min-32-chars');
+    
+    // Update user verification status
+    await updateUser(decoded.email, { 
+      is_verified: true, 
+      verification_token: null 
+    });
+
+    res.json({ ok: true });
+    
+  } catch (error) {
+    console.error('Verification error:', error);
+    res.status(400).json({ error: 'Token wygasł lub nieprawidłowy' });
+  }
+});
+
+// POST /api/resend-activation
+app.post('/api/resend-activation', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email jest wymagany' });
+    }
+
+    // Find user
+    const user = await getUserByEmail(email);
+    if (!user) {
+      return res.status(404).json({ error: 'Użytkownik nie znaleziony' });
+    }
+
+    if (user.is_verified) {
+      return res.status(400).json({ error: 'Konto już jest aktywowane' });
+    }
+
+    // Generate new verification token
+    const verificationToken = jwt.sign(
+      { email }, 
+      process.env.APP_JWT_SECRET || 'default-secret-key-min-32-chars', 
+      { expiresIn: '24h' }
+    );
+
+    // Update user with new token
+    await updateUser(email, { verification_token: verificationToken });
+
+    // Send activation email
+    const verificationUrl = `${process.env.APP_BASE_URL || 'https://sanguivia.pl'}/verify/${verificationToken}`;
+    
+    try {
+      const info = await transporter.sendMail({
+        from: process.env.FROM_EMAIL || 'Sanguivia <noreply@sanguivia.pl>',
+        to: email,
+        subject: 'Aktywacja konta — Sanguivia',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #333; text-align: center;">Witaj w Sanguivia!</h2>
+            <p style="color: #666; font-size: 16px; line-height: 1.5;">
+              Kliknij, aby potwierdzić konto (ważne 24h)
+            </p>
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${verificationUrl}" 
+                 style="background-color: #4CAF50; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-size: 16px; display: inline-block;">
+                Aktywuj konto
+              </a>
+            </div>
+            <p style="color: #999; font-size: 14px; text-align: center;">
+              Jeśli to nie Ty – zignoruj tę wiadomość.
+            </p>
+          </div>
+        `
+      });
+      
+      console.log('MAIL OK', info.messageId);
+      res.json({ ok: true });
+      
+    } catch (mailError) {
+      console.error('MAIL ERR', mailError.message);
+      res.status(500).json({ error: 'MAIL_SEND_FAILED', detail: mailError.message });
+    }
+
+  } catch (error) {
+    console.error('Resend activation error:', error);
+    res.status(500).json({ error: 'Server error', detail: error.message });
+  }
 });
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Health check: http://localhost:${PORT}/api/health`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
+  console.log(`🔧 SMTP diagnostic: http://localhost:${PORT}/api/diag/smtp`);
+  console.log(`🌐 Server accessible from: http://0.0.0.0:${PORT}`);
 });
