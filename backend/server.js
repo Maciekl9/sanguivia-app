@@ -10,15 +10,14 @@ const app = express();
 const PORT = process.env.PORT || 10000;
 
 // Middleware
-app.use(cors({ origin: true }));
-app.options('*', cors());
+app.use(cors({ origin: true })); // to ogarnie też preflight
 app.use(express.json());
 
-// CORS headers for all responses
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'content-type, authorization');
-  if (req.method === 'OPTIONS') return res.status(204).end();
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
 
@@ -39,8 +38,8 @@ const transporter = nodemailer.createTransport({
   port: Number(process.env.SMTP_PORT) || 465,
   secure: String(process.env.SMTP_SECURE || 'true') === 'true',
   auth: {
-    user: process.env.SMTP_USER || 'kontakt@sanguivia.pl',
-    pass: process.env.SMTP_PASS || 'Patelnia2015-'
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS
   },
   pool: true,                 // utrzymuj połączenie
   maxConnections: 3,
@@ -139,7 +138,7 @@ app.post('/api/register', async (req, res) => {
     
     try {
       const info = await transporter.sendMail({
-        from: process.env.FROM_EMAIL || 'Sanguivia <kontakt@sanguivia.pl>',
+        from: process.env.FROM_EMAIL,
         to: email,
         subject: 'Aktywacja konta Sanguivia',
         html: `
@@ -446,7 +445,7 @@ app.post('/api/resend-activation', async (req, res) => {
     
     try {
       const info = await transporter.sendMail({
-        from: process.env.FROM_EMAIL || 'Sanguivia <kontakt@sanguivia.pl>',
+        from: process.env.FROM_EMAIL,
         to: email,
         subject: 'Aktywacja konta Sanguivia',
         html: `
@@ -562,14 +561,14 @@ app.post('/api/init-db', async (req, res) => {
 });
 
 
-// Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Sanguivia API is running' });
-});
-
 // Health check for Render
 app.get('/healthz', (req, res) => {
   res.json({ status: 'OK', message: 'Sanguivia API is running' });
+});
+
+// API Health check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'OK', message: 'Sanguivia API is running', timestamp: new Date().toISOString() });
 });
 
 // Send verification email endpoint
