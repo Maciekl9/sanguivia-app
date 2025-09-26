@@ -10,37 +10,27 @@ services:
         value: production
       - key: PORT
         value: 10000
-      - key: DB_HOST
-        value: dpg-d3akjop5pdvs73cvbftg-a.oregon-postgres.render.com
-      - key: DB_PORT
-        value: 5432
-      - key: DB_NAME
-        value: sanguivia_db
-      - key: DB_USER
-        value: sanguivia_db_user
-      - key: DB_PASSWORD
-        value: hV5Jo573qoyIWfstQnv76QBZ3lHmWEO5
+      - key: DATABASE_URL
+        value: postgresql://sanguivia_db_user:hV5Jo573qoyIWfstQnv76QBZ31HmWE05@dpg-d3akjop5pdvs73cvbftg-a.oregon-postgres.render.com/sanguivia_db
+      - key: APP_BASE_URL
+        value: https://sanguivia.pl
       - key: APP_JWT_SECRET
-        generateValue: true
-      - key: JWT_EXPIRES_IN
-        value: 24h
+        value: h7s8df9g8sd76f6s7g9sd87g6f7sd98f7s9
+      - key: FROM_EMAIL
+        value: Sanguivia <turkawki15@gmail.com>
       - key: SMTP_HOST
-        value: serwer2563321.home.pl
+        value: smtp.gmail.com
+      - key: SMTP_PASS
+        value: yllf nzja cekd rsxg
       - key: SMTP_PORT
         value: 465
       - key: SMTP_SECURE
         value: true
       - key: SMTP_USER
-        value: kontakt@sanguivia.pl
-      - key: SMTP_PASS
-        value: Patelnia2015-
-      - key: FROM_EMAIL
-        value: Sanguivia <kontakt@sanguivia.pl>
-      - key: APP_BASE_URL
-        value: https://sanguivia.pl
+        value: turkawki15@gmail.com
 
 databases:
   - name: sanguivia-db
     plan: free
-    databaseName: sanguivia
-    user: sanguivia_user
+    databaseName: sanguivia_db
+    user: sanguivia_db_user
