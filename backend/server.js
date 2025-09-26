@@ -32,18 +32,23 @@ const pool = new Pool({
   query_timeout: 10000
 });
 
-// Email transporter - Gmail (szybszy niż home.pl)
+// Email transporter - home.pl (TWOJE DANE!)
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'serwer2563321.home.pl',
+  port: 465,
+  secure: true,
   auth: {
-    user: 'turkawki15@gmail.com',
-    pass: 'Oczko1908-'
+    user: 'kontakt@sanguivia.pl',
+    pass: 'Patelnia2015-'
   },
   pool: true,
   maxConnections: 3,
   maxMessages: 100,
-  connectionTimeout: 10000,   // 10s na ustanowienie połączenia
-  socketTimeout: 30000        // 30s na transfer
+  connectionTimeout: 120000,  // 120s na ustanowienie połączenia
+  socketTimeout: 300000,      // 300s na transfer
+  tls: { rejectUnauthorized: false },
+  retryDelay: 5000,           // 5s między próbami
+  maxRetries: 3               // 3 próby
 });
 
 // Test SMTP connection
@@ -144,7 +149,7 @@ app.post('/api/register', async (req, res) => {
     
     try {
       const info = await transporter.sendMail({
-        from: 'Sanguivia <turkawki15@gmail.com>',
+        from: 'Sanguivia <kontakt@sanguivia.pl>',
         to: email,
         subject: 'Aktywacja konta Sanguivia',
         html: `
@@ -451,7 +456,7 @@ app.post('/api/resend-activation', async (req, res) => {
     
     try {
       const info = await transporter.sendMail({
-        from: 'Sanguivia <turkawki15@gmail.com>',
+        from: 'Sanguivia <kontakt@sanguivia.pl>',
         to: email,
         subject: 'Aktywacja konta Sanguivia',
         html: `
