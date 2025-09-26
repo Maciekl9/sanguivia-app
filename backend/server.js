@@ -34,18 +34,26 @@ const pool = new Pool({
   query_timeout: 10000
 });
 
-// Email transporter - Gmail (działa z Render!)
+// Email transporter - home.pl
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'serwer2563321.home.pl',
+  port: 587,
+  secure: false,
   auth: {
-    user: 'turkawki15@gmail.com',
-    pass: 'Oczko1908-'
+    user: 'kontakt@sanguivia.pl',
+    pass: 'Patelnia2015-'
   },
   pool: true,
   maxConnections: 3,
   maxMessages: 100,
-  connectionTimeout: 30000,
-  socketTimeout: 60000
+  connectionTimeout: 60000,
+  socketTimeout: 90000,
+  requireTLS: true,
+  tls: { 
+    minVersion: 'TLSv1.2', 
+    servername: 'serwer2563321.home.pl',
+    rejectUnauthorized: false 
+  }
 });
 
 // Test SMTP connection
@@ -143,7 +151,7 @@ app.post('/api/register', async (req, res) => {
     
         try {
           const info = await transporter.sendMail({
-            from: 'Sanguivia <turkawki15@gmail.com>',
+            from: 'Sanguivia <kontakt@sanguivia.pl>',
             to: email,
             subject: 'Aktywacja konta Sanguivia',
             html: `
@@ -450,7 +458,7 @@ app.post('/api/resend-activation', async (req, res) => {
     
     try {
       const info = await transporter.sendMail({
-        from: 'Sanguivia <turkawki15@gmail.com>',
+        from: 'Sanguivia <kontakt@sanguivia.pl>',
         to: email,
         subject: 'Aktywacja konta Sanguivia',
         html: `
