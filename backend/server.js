@@ -33,15 +33,20 @@ const pool = new Pool({
   query_timeout: 10000
 });
 
-// Email transporter - home.pl z zmiennych środowiskowych
+// Email transporter - home.pl (BEZ haseł w kodzie!)
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'serwer2563321.home.pl',
   port: Number(process.env.SMTP_PORT) || 465,
-  secure: String(process.env.SMTP_SECURE) === 'true',
+  secure: String(process.env.SMTP_SECURE || 'true') === 'true',
   auth: {
-    user: process.env.SMTP_USER || 'kontakt@sanguivia.pl',
-    pass: process.env.SMTP_PASS || 'Patelnia2015-'
-  }
+    user: process.env.SMTP_USER,      // wymagane w ENV
+    pass: process.env.SMTP_PASS       // wymagane w ENV
+  },
+  pool: true,                 // utrzymuj połączenie
+  maxConnections: 3,
+  maxMessages: 100,
+  connectionTimeout: 30000,   // 30s na ustanowienie połączenia
+  socketTimeout: 60000        // 60s na transfer
 });
 
 // 
@@ -78,7 +83,7 @@ app.post('/api/register', async (req, res) => {
       responseSent = true;
       res.status(408).json({ error: 'Request timeout' });
     }
-  }, 25000);
+  }, 60000);
   
   try {
     const { firstname, lastname, login, email, password } = req.body;
@@ -133,8 +138,8 @@ app.post('/api/register', async (req, res) => {
     const verificationUrl = `${process.env.APP_BASE_URL || 'https://sanguivia.pl'}/verify/${verificationToken}`;
     
     try {
-      await transporter.sendMail({
-        from: process.env.FROM_EMAIL || 'Sanguivia <kontakt@sanguivia.pl>',
+      const info = await transporter.sendMail({
+        from: process.env.FROM_EMAIL,
         to: email,
         subject: 'Aktywacja konta Sanguivia',
         html: `
@@ -145,9 +150,9 @@ app.post('/api/register', async (req, res) => {
           <p>Jeśli nie rejestrowałeś się w Sanguivia, zignoruj ten email.</p>
         `
       });
-      console.log('✅ Activation email sent successfully to:', email);
-    } catch (emailError) {
-      console.error('❌ Email sending error:', emailError);
+      console.log('MAIL OK', info.messageId);
+    } catch (e) {
+      console.error('MAIL ERR', e);
       // Continue without failing the registration
     }
 
@@ -277,10 +282,10 @@ app.post('/api/forgot-password', async (req, res) => {
     );
 
     // Send reset email
-    const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+    const resetUrl = `${process.env.APP_BASE_URL || 'https://sanguivia.pl'}/reset-password/${resetToken}`;
     
-    await transporter.sendMail({
-      from: process.env.FROM_EMAIL || 'Sanguivia <kontakt@sanguivia.pl>',
+    const info = await transporter.sendMail({
+      from: process.env.FROM_EMAIL,
       to: email,
       subject: 'Reset hasła - Sanguivia',
       html: `
@@ -292,6 +297,8 @@ app.post('/api/forgot-password', async (req, res) => {
         <p>Jeśli nie prosiłeś o reset hasła, zignoruj ten email.</p>
       `
     });
+    
+    console.log('MAIL OK', info.messageId);
 
     res.json({ message: 'Link do resetu hasła został wysłany na email' });
 
@@ -435,13 +442,13 @@ app.post('/api/resend-activation', async (req, res) => {
     await pool.query('UPDATE users SET verification_token = $1 WHERE email = $2', [verificationToken, email]);
     
     // Send activation email
-    const activationLink = `${process.env.APP_BASE_URL || 'https://sanguivia.pl'}/verify/${verificationToken}`;
+    const activationLink = `${process.env.APP_BASE_URL || 'https://sanguivia.pl'}/activate?token=${verificationToken}`;
     
     try {
-      await transporter.sendMail({
-        from: process.env.FROM_EMAIL || 'Sanguivia <kontakt@sanguivia.pl>',
+      const info = await transporter.sendMail({
+        from: process.env.FROM_EMAIL,
         to: email,
-        subject: 'Aktywacja konta Sanguivia - Ponownie',
+        subject: 'Aktywacja konta Sanguivia',
         html: `
           <h2>Witaj w Sanguivia!</h2>
           <p>Oto nowy link aktywacyjny dla Twojego konta:</p>
@@ -451,11 +458,11 @@ app.post('/api/resend-activation', async (req, res) => {
         `
       });
       
-      console.log('✅ Resend activation email sent successfully to:', email);
+      console.log('MAIL OK', info.messageId);
       res.json({ message: 'Email aktywacyjny został wysłany ponownie' });
-    } catch (emailError) {
-      console.error('❌ Email sending error:', emailError);
-      res.status(500).json({ error: 'Błąd wysyłania emaila: ' + emailError.message });
+    } catch (e) {
+      console.error('MAIL ERR', e);
+      res.status(502).json({ error: 'MAIL_SEND_FAILED', detail: String(e?.response || e?.message) });
     }
   } catch (error) {
     console.error('Resend activation error:', error);
@@ -583,7 +590,7 @@ app.post('/auth/send-verify', async (req, res) => {
     
     // Send email
     const info = await transporter.sendMail({
-      from: process.env.FROM_EMAIL || 'Sanguivia <kontakt@sanguivia.pl>',
+      from: process.env.FROM_EMAIL,
       to: email,
       subject: 'Aktywacja konta Sanguivia',
       html: `
@@ -601,6 +608,12 @@ app.post('/auth/send-verify', async (req, res) => {
     console.error('MAIL ERR', e);
     res.status(502).json({ error: 'MAIL_SEND_FAILED', detail: String(e?.response || e?.message) });
   }
+});
+
+// GET /verify/:token - przekierowanie na API
+app.get('/verify/:token', (req, res) => {
+  const { token } = req.params;
+  res.redirect(`/api/verify/${token}`);
 });
 
 // Start server
