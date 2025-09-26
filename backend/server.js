@@ -45,8 +45,8 @@ const transporter = nodemailer.createTransport({
   pool: true,
   maxConnections: 3,
   maxMessages: 100,
-  connectionTimeout: 60000,   // 60s na nawiązanie połączenia
-  socketTimeout: 90000,       // 90s na transfer
+  connectionTimeout: 120000,  // 120s na nawiązanie połączenia
+  socketTimeout: 180000,      // 180s na transfer
   requireTLS: true,
   tls: { 
     minVersion: 'TLSv1.2', 
@@ -97,7 +97,7 @@ app.post('/api/register', async (req, res) => {
       responseSent = true;
       res.status(408).json({ error: 'Request timeout' });
     }
-  }, 60000);
+  }, 120000);
   
   try {
     const { firstname, lastname, login, email, password } = req.body;

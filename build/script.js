@@ -329,7 +329,7 @@ class NeumorphismLoginForm {
         
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 60000);
+            const timeoutId = setTimeout(() => controller.abort(), 120000);
             
             const response = await fetch(`${this.API_BASE_URL}/register`, {
                 method: 'POST',
@@ -579,7 +579,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 60000);
+            const timeoutId = setTimeout(() => controller.abort(), 120000);
             
             const response = await fetch('https://sanguivia-ap.onrender.com/api/resend-activation', {
                 method: 'POST',
