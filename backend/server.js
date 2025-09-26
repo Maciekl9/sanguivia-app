@@ -108,7 +108,7 @@ app.post('/api/register', async (req, res) => {
       clearTimeout(timeout);
       if (!responseSent) {
         responseSent = true;
-        return res.status(400).json({ error: 'Wszystkie pola są wymagane' });
+        return res.status(400).json({ error: 'Wszystkie pola są wymagane', received: { firstname, lastname, login, email, password: password ? '***' : null } });
       }
     }
 
