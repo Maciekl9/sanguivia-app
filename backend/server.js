@@ -27,12 +27,14 @@ const pool = new Pool({
   query_timeout: 10000
 });
 
-// Email transporter - Gmail z app password
+// Email transporter - home.pl
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'serwer2563321.home.pl',
+  port: 465,
+  secure: true,
   auth: {
-    user: 'turkawki15@gmail.com',
-    pass: 'degy htxh eygy eard'
+    user: 'kontakt@sanguivia.pl',
+    pass: 'Patelnia2015-'
   }
 });
 
@@ -126,7 +128,7 @@ app.post('/api/register', async (req, res) => {
     
     try {
       await transporter.sendMail({
-        from: 'turkawki15@gmail.com',
+        from: 'Sanguivia <kontakt@sanguivia.pl>',
         to: email,
         subject: 'Aktywacja konta Sanguivia',
         html: `
@@ -272,7 +274,7 @@ app.post('/api/forgot-password', async (req, res) => {
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
     
     await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+      from: 'Sanguivia <kontakt@sanguivia.pl>',
       to: email,
       subject: 'Reset hasła - Sanguivia',
       html: `
@@ -431,7 +433,7 @@ app.post('/api/resend-activation', async (req, res) => {
     
     try {
       await transporter.sendMail({
-        from: 'turkawki15@gmail.com',
+        from: 'Sanguivia <kontakt@sanguivia.pl>',
         to: email,
         subject: 'Aktywacja konta Sanguivia - Ponownie',
         html: `
