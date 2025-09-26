@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const cors = require('cors');
 const { Pool } = require('pg');
+const net = require('net');
 require('dotenv').config({ path: './config.env' });
 
 const app = express();
@@ -32,11 +33,11 @@ const pool = new Pool({
   query_timeout: 10000
 });
 
-// Email transporter - home.pl (TWOJE DANE!)
+// Email transporter - home.pl (587/STARTTLS - lepsze dla chmur!)
 const transporter = nodemailer.createTransport({
-  host: 'serwer2563321.home.pl',
-  port: 465,
-  secure: true,
+  host: 'smtp.home.pl',
+  port: 587,
+  secure: false,
   auth: {
     user: 'kontakt@sanguivia.pl',
     pass: 'Patelnia2015-'
@@ -44,11 +45,14 @@ const transporter = nodemailer.createTransport({
   pool: true,
   maxConnections: 3,
   maxMessages: 100,
-  connectionTimeout: 120000,  // 120s na ustanowienie połączenia
-  socketTimeout: 300000,      // 300s na transfer
-  tls: { rejectUnauthorized: false },
-  retryDelay: 5000,           // 5s między próbami
-  maxRetries: 3               // 3 próby
+  connectionTimeout: 60000,   // 60s na nawiązanie połączenia
+  socketTimeout: 90000,       // 90s na transfer
+  requireTLS: true,
+  tls: { 
+    minVersion: 'TLSv1.2', 
+    servername: 'smtp.home.pl',
+    rejectUnauthorized: false 
+  }
 });
 
 // Test SMTP connection
@@ -147,24 +151,24 @@ app.post('/api/register', async (req, res) => {
     // Send verification email
     const verificationUrl = `${'https://sanguivia.pl'}/verify/${verificationToken}`;
     
-    try {
-      const info = await transporter.sendMail({
-        from: 'Sanguivia <kontakt@sanguivia.pl>',
-        to: email,
-        subject: 'Aktywacja konta Sanguivia',
-        html: `
-          <h2>Witaj w Sanguivia!</h2>
-          <p>Dziękujemy za rejestrację. Aby aktywować swoje konto, kliknij poniższy link:</p>
-          <a href="${verificationUrl}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Aktywuj konto</a>
-          <p>Link jest ważny przez 24 godziny.</p>
-          <p>Jeśli nie rejestrowałeś się w Sanguivia, zignoruj ten email.</p>
-        `
-      });
-      console.log('MAIL OK', info.messageId);
-    } catch (e) {
-      console.error('MAIL ERR', e);
-      // Continue without failing the registration
-    }
+        try {
+          const info = await transporter.sendMail({
+            from: 'Sanguivia <kontakt@sanguivia.pl>',
+            to: email,
+            subject: 'Aktywacja konta Sanguivia',
+            html: `
+              <h2>Witaj w Sanguivia!</h2>
+              <p>Dziękujemy za rejestrację. Aby aktywować swoje konto, kliknij poniższy link:</p>
+              <a href="${verificationUrl}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Aktywuj konto</a>
+              <p>Link jest ważny przez 24 godziny.</p>
+              <p>Jeśli nie rejestrowałeś się w Sanguivia, zignoruj ten email.</p>
+            `
+          });
+          console.log('MAIL OK', info.messageId);
+        } catch (e) {
+          console.error('MAIL ERR', e.message, e.code, e.response);
+          // Continue without failing the registration
+        }
 
     clearTimeout(timeout);
     if (!responseSent) {
@@ -580,6 +584,21 @@ app.get('/healthz', (req, res) => {
 // API Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Sanguivia API is running', timestamp: new Date().toISOString() });
+});
+
+// SMTP Reachability test
+app.get('/api/diag/smtp', (req, res) => {
+  const host = 'smtp.home.pl';
+  const port = 587;
+  const s = net.connect({ host, port, timeout: 10000 }, () => {
+    s.end(); 
+    res.json({ ok: true, host, port, message: 'SMTP port accessible' });
+  });
+  s.on('error', e => res.status(502).json({ ok: false, error: String(e), host, port }));
+  s.on('timeout', () => { 
+    s.destroy(); 
+    res.status(504).json({ ok: false, error: 'connect timeout', host, port }); 
+  });
 });
 
 // Send verification email endpoint
